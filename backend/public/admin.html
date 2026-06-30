@@ -133,12 +133,7 @@
     <div>
       <h1>EQI Admin — MetaNetwork MVP</h1>
       <p class="subtitle">operator panel · session active</p>
-      <div style="margin-top:10px;font-size:0.72rem;line-height:2;color:#555;display:grid;grid-template-columns:max-content 1fr;gap:0 16px">
-        <span>A (Ethereum Sepolia)</span><span style="color:#888;user-select:all">0xDB9180f50AFB6eAcB671DD173B86bC5437844ed2</span>
-        <span>B (BNB Testnet)</span><span style="color:#888;user-select:all">0xF17eEbb229E8F767bBCA6C39E19f527165b9cdE1</span>
-        <span>C (Polygon Amoy)</span><span style="color:#888;user-select:all">0x894d8842305d6E0c83903c6Da77cC281BEF73760</span>
-        <span>D (Arbitrum Sepolia)</span><span style="color:#888;user-select:all">0xF3250962637144FFEd4d3e2165dc76D19c43bC1c</span>
-      </div>
+      <div id="it-addresses-grid" style="margin-top:10px;font-size:0.72rem;line-height:2;color:#555;display:grid;grid-template-columns:max-content 1fr;gap:0 16px"></div>
     </div>
     <button class="btn-secondary" onclick="logout()">Logout</button>
   </div>
@@ -216,12 +211,7 @@
     </div>
     <div class="form-group">
       <label>Networks</label>
-      <div class="net-checks">
-        <label class="net-check"><input type="checkbox" id="reg-A" value="A" checked> A — Sepolia</label>
-        <label class="net-check"><input type="checkbox" id="reg-B" value="B" checked> B — BNB</label>
-        <label class="net-check"><input type="checkbox" id="reg-C" value="C" checked> C — Amoy</label>
-        <label class="net-check"><input type="checkbox" id="reg-D" value="D" checked> D — Arbitrum</label>
-      </div>
+      <div class="net-checks" id="reg-nets-wrap"></div>
     </div>
     <button class="btn-primary" onclick="registerWallet()">Register</button>
     <div class="feedback" id="reg-feedback"></div>
@@ -233,12 +223,7 @@
     <div class="form-row-3">
       <div class="form-group">
         <label>Network</label>
-        <select id="dist-network">
-          <option value="A">A — Ethereum Sepolia</option>
-          <option value="B">B — BNB Testnet</option>
-          <option value="C">C — Polygon Amoy</option>
-          <option value="D">D — Arbitrum Sepolia</option>
-        </select>
+        <select id="dist-network"></select>
       </div>
       <div class="form-group">
         <label>Amount (tEQUI)</label>
@@ -306,21 +291,11 @@
     <div class="form-row" style="margin-top:4px">
       <div class="form-group">
         <label>Мережа-джерело</label>
-        <select id="msd-src">
-          <option value="A">A — Sepolia</option>
-          <option value="B">B — BNB</option>
-          <option value="C">C — Amoy</option>
-          <option value="D">D — Arbitrum</option>
-        </select>
+        <select id="msd-src"></select>
       </div>
       <div class="form-group">
         <label>Мережа-ціль</label>
-        <select id="msd-dst">
-          <option value="A">A — Sepolia</option>
-          <option value="B">B — BNB</option>
-          <option value="C">C — Amoy</option>
-          <option value="D" selected>D — Arbitrum</option>
-        </select>
+        <select id="msd-dst"></select>
       </div>
     </div>
     <div class="form-row" style="margin-top:4px">
@@ -385,6 +360,7 @@
 'use strict';
 
 let adminToken = sessionStorage.getItem('adminToken');
+let NETWORKS   = {};
 
 // ── API ───────────────────────────────────────────────────────────────────────
 
@@ -400,9 +376,46 @@ async function api(path, opts = {}) {
   }
 }
 
+// ── Config ────────────────────────────────────────────────────────────────────
+
+async function loadConfig() {
+  const { data } = await api('/registry/config');
+  if (data && data.ok) data.networks.forEach(n => { NETWORKS[n.network_id] = n; });
+  populateNetworkSelects();
+  populateRegisterChecks();
+  populateItAddresses();
+}
+
+function populateNetworkSelects() {
+  const html = Object.values(NETWORKS).map(n =>
+    `<option value="${n.network_id}">${n.network_id} — ${n.name}</option>`
+  ).join('');
+  ['dist-network', 'msd-src', 'msd-dst'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+  });
+}
+
+function populateRegisterChecks() {
+  const wrap = document.getElementById('reg-nets-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = Object.values(NETWORKS).map(n =>
+    `<label class="net-check"><input type="checkbox" id="reg-${n.network_id}" value="${n.network_id}" checked> ${n.network_id} — ${n.name}</label>`
+  ).join('');
+}
+
+function populateItAddresses() {
+  const el = document.getElementById('it-addresses-grid');
+  if (!el) return;
+  el.innerHTML = Object.values(NETWORKS).map(n =>
+    `<span>${n.network_id} (${n.name})</span><span style="color:#888;user-select:all">${n.it_address || '—'}</span>`
+  ).join('');
+}
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 async function checkAuth() {
+  await loadConfig();
   if (!adminToken) return showLogin();
   const { status } = await api('/admin/wallets');
   if (status === 401) { clearToken(); return showLogin(); }
@@ -471,8 +484,6 @@ function loadAll() {
 
 // ── MetaRegistry State ────────────────────────────────────────────────────────
 
-const NET_NAMES = { A: 'Ethereum Sepolia', B: 'BNB Testnet', C: 'Polygon Amoy', D: 'Arbitrum Sepolia' };
-
 async function loadState() {
   const [stateResp, cabResp] = await Promise.all([
     api('/state'),
@@ -498,17 +509,17 @@ async function loadState() {
 
   const reserved = (cabData && cabData.ok && cabData.reserved_totals)
     ? cabData.reserved_totals
-    : { A: 0, B: 0, C: 0, D: 0 };
+    : Object.fromEntries(Object.keys(NETWORKS).map(k => [k, 0]));
 
-  const nets = ['A', 'B', 'C', 'D'];
+  const nets = Object.keys(NETWORKS);
   grid.innerHTML = nets.map(nid => {
     const n = (s.networks || {})[nid];
-    if (!n) return `<div class="gas-card"><div class="gas-net">${nid} — ${NET_NAMES[nid]}</div><div class="value dim">no data</div></div>`;
+    if (!n) return `<div class="gas-card"><div class="gas-net">${nid} — ${NETWORKS[nid]?.name || nid}</div><div class="value dim">no data</div></div>`;
     const total = (n.IT_ACTIVE || 0) + (n.IT_FROZEN || 0) + (n.wallet_active_total || 0) + (n.UNAVAILABLE || 0);
     const res  = reserved[nid] || 0;
     const free = Math.max(0, (n.IT_ACTIVE || 0) - res);
     return `<div class="gas-card">
-      <div class="gas-net">${nid} — ${NET_NAMES[nid]}</div>
+      <div class="gas-net">${nid} — ${NETWORKS[nid]?.name || nid}</div>
       <div style="font-size:0.74rem;line-height:2;margin-top:4px">
         <div><span style="color:#555;min-width:90px;display:inline-block">IT_ACTIVE</span>  <span class="value hi">${(n.IT_ACTIVE||0).toLocaleString()}</span></div>
         <div style="padding-left:8px"><span style="color:#3a4a3a;min-width:82px;display:inline-block">↳ вільно</span>   <span class="value" style="color:#4cbb7a">${free.toLocaleString()}</span></div>
@@ -572,7 +583,7 @@ async function loadWallets() {
     byAddr[a][r.network_id] = r;
   }
 
-  const nets = ['A', 'B', 'C', 'D'];
+  const nets = Object.keys(NETWORKS);
   const rows = Object.entries(byAddr).map(([addr, nets_data]) => {
     const netCells = nets.map(n => {
       const w = nets_data[n];
@@ -592,7 +603,7 @@ async function loadWallets() {
   wrap.innerHTML = `<table class="data-table">
     <thead><tr>
       <th>Address</th><th>Type</th>
-      <th>A</th><th>B</th><th>C</th><th>D</th>
+      ${nets.map(n => `<th>${n}</th>`).join('')}
     </tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
@@ -694,8 +705,6 @@ async function createManualStuck() {
 
 // ── Stuck deliveries ──────────────────────────────────────────────────────────
 
-const NET_LABELS = { A: 'Sepolia', B: 'BNB', C: 'Amoy', D: 'Arbitrum' };
-
 async function loadStuckDeliveries() {
   const { data } = await api('/admin/stuck-deliveries');
   const wrap  = document.getElementById('stuck-deliveries-wrap');
@@ -719,8 +728,8 @@ async function loadStuckDeliveries() {
     const txHash  = row.command_id.replace('entry:', '');
     const srcNet  = row.source_network || '?';
     const dstNet  = row.network_id || '?';
-    const srcLabel = NET_LABELS[srcNet] || srcNet;
-    const dstLabel = NET_LABELS[dstNet] || dstNet;
+    const srcLabel = NETWORKS[srcNet]?.name || srcNet;
+    const dstLabel = NETWORKS[dstNet]?.name || dstNet;
     const shortTo   = row.to_address   ? row.to_address.slice(0,10)   + '…' : '—';
     const shortFrom = row.from_address  ? row.from_address.slice(0,10) + '…' : '—';
     const shortTx   = txHash.slice(0, 14) + '…';
@@ -965,7 +974,7 @@ async function mseRefundAll(envelopeId, idx) {
 async function registerWallet() {
   const fb   = document.getElementById('reg-feedback');
   const addr = document.getElementById('reg-address').value.trim();
-  const nets = ['A','B','C','D'].filter(n => document.getElementById('reg-'+n).checked);
+  const nets = Object.keys(NETWORKS).filter(n => document.getElementById('reg-'+n)?.checked);
   fb.className = 'feedback';
   if (!addr) { fb.textContent = 'Enter address'; fb.className = 'feedback err'; return; }
   if (nets.length === 0) { fb.textContent = 'Select at least one network'; fb.className = 'feedback err'; return; }
