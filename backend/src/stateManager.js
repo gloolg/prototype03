@@ -251,6 +251,36 @@ function canApplyTreasuryDistribution(network_id, wallet_address, amount) {
   return { ok: true };
 }
 
+// ─── applyNetworkAdd ──────────────────────────────────────────────────────────
+// Adds a new network to the MetaRegistry via structural rebalance.
+// Calls sim.rebalanceOnNetworkAdd (mutates state in-place), then persists.
+// itAddress: the real IT-EOA address for the new network.
+function applyNetworkAdd(newNetworkId, itAddress) {
+  const state = getState();
+
+  if (state.networks[newNetworkId]) {
+    return { ok: false, reason: `Network "${newNetworkId}" already exists` };
+  }
+
+  const result = sim.rebalanceOnNetworkAdd(state, newNetworkId, sim.CONSTANTS.A_ACTIVE_EXPECTED);
+  if (!result.ok) {
+    return {
+      ok:     false,
+      reason: `Post-rebalance invariant failed: activeSum=${result.activeSum}, expected=${sim.CONSTANTS.A_ACTIVE_EXPECTED}`,
+    };
+  }
+
+  // Replace placeholder IT address set by rebalanceOnNetworkAdd
+  if (itAddress) {
+    state.networks[newNetworkId].it_address   = itAddress;
+    state.treasuries[newNetworkId].it_address = itAddress;
+  }
+
+  persistState(state);
+  console.log(`[stateManager] Network ${newNetworkId} added. Active networks: ${Object.keys(state.networks).join(',')}`);
+  return { ok: true, allIds: result.allIds, newShares: result.newShares };
+}
+
 // ─── applyTreasuryDistribution ────────────────────────────────────────────────
 function applyTreasuryDistribution(network_id, wallet_address, amount, tx_hash = null) {
   const state = getState();
@@ -838,6 +868,7 @@ module.exports = {
   loadOnChainBalances,
   checkOnChainInvariant,
   applyGenesis,
+  applyNetworkAdd,
   canApplyTreasuryDistribution,
   applyTreasuryDistribution,
   applyObservation,

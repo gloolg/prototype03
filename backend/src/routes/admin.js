@@ -65,6 +65,31 @@ router.post('/logout', (req, res) => {
 
 router.use(requireAdmin);
 
+// ── Network management ────────────────────────────────────────────────────────
+
+// POST /admin/network-add
+// Adds a new network to the MetaRegistry via structural rebalance.
+// Body: { network_id: string, it_address: "0x..." }
+router.post('/network-add', (req, res) => {
+  if (!sm.isInitialized()) {
+    return res.status(400).json({ ok: false, reason: 'MetaRegistry not initialized.' });
+  }
+  const { network_id, it_address } = req.body || {};
+  if (!network_id || typeof network_id !== 'string' || !network_id.trim()) {
+    return res.status(400).json({ ok: false, reason: 'Missing "network_id".' });
+  }
+  if (!it_address || !/^0x[0-9a-fA-F]{40}$/i.test(it_address)) {
+    return res.status(400).json({ ok: false, reason: 'Missing or invalid "it_address" (must be 0x EVM address).' });
+  }
+  const net_id = network_id.trim();
+  if (sm.getState().networks[net_id]) {
+    return res.status(400).json({ ok: false, reason: `Network "${net_id}" already exists.` });
+  }
+  const result = sm.applyNetworkAdd(net_id, it_address.trim());
+  if (!result.ok) return res.status(400).json(result);
+  return res.json({ ok: true, network_id: net_id, allIds: result.allIds, newShares: result.newShares });
+});
+
 // ── Wallets ───────────────────────────────────────────────────────────────────
 
 router.post('/register-wallet', (req, res) => {
