@@ -1,0 +1,6 @@
+node_modules/
+db/metaregistry.sqlite
+db/metaregistry.sqlite-shm
+db/metaregistry.sqlite-wal
+.env
+

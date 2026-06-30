@@ -1,0 +1,44 @@
+{
+  "contract": "tEQUI",
+  "version": "1.0.0",
+  "deployedAt": "2026-06-16",
+  "note": "Test token for MetaNetwork EQI MVP prototype. Not production EQI.",
+  "networks": {
+    "ethereum-sepolia": {
+      "chainId": 11155111,
+      "networkName": "Ethereum Sepolia Testnet",
+      "contractAddress": "0x494bfC3aB5fAe4066dc1F3D42F6e5b6938b70438",
+      "initialSupply": 100000,
+      "totalSupply": "100000000000000000000000",
+      "explorer": "https://sepolia.etherscan.io/address/0x494bfC3aB5fAe4066dc1F3D42F6e5b6938b70438",
+      "role": "IT-A"
+    },
+    "bnb-testnet": {
+      "chainId": 97,
+      "networkName": "BNB Smart Chain Testnet",
+      "contractAddress": "0x494bfC3aB5fAe4066dc1F3D42F6e5b6938b70438",
+      "initialSupply": 100000,
+      "totalSupply": "100000000000000000000000",
+      "explorer": "https://testnet.bscscan.com/address/0x494bfC3aB5fAe4066dc1F3D42F6e5b6938b70438",
+      "role": "IT-B"
+    },
+    "polygon-amoy": {
+      "chainId": 80002,
+      "networkName": "Polygon PoS Amoy Testnet",
+      "contractAddress": "0x494bfC3aB5fAe4066dc1F3D42F6e5b6938b70438",
+      "initialSupply": 100000,
+      "totalSupply": "100000000000000000000000",
+      "explorer": "https://amoy.polygonscan.com/address/0x494bfC3aB5fAe4066dc1F3D42F6e5b6938b70438",
+      "role": "IT-C"
+    },
+    "arbitrum-sepolia": {
+      "chainId": 421614,
+      "networkName": "Arbitrum Sepolia Testnet",
+      "contractAddress": "0x494bfC3aB5fAe4066dc1F3D42F6e5b6938b70438",
+      "initialSupply": 100000,
+      "totalSupply": "100000000000000000000000",
+      "explorer": "https://sepolia.arbiscan.io/address/0x494bfC3aB5fAe4066dc1F3D42F6e5b6938b70438",
+      "role": "IT-D"
+    }
+  }
+}

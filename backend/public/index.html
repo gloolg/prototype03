@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EQI DApp — MetaNetwork MVP</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'SF Mono', 'Fira Code', monospace; background: #0d0d0d; color: #e0e0e0; min-height: 100vh; padding: 24px; }
+    h1 { font-size: 1.2rem; color: #fff; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .subtitle { font-size: 0.75rem; color: #555; margin-bottom: 32px; }
+    .card { background: #161616; border: 1px solid #2a2a2a; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+    .card h2 { font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px; }
+    .row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+    .label { font-size: 0.72rem; color: #555; min-width: 110px; }
+    .value { font-size: 0.82rem; color: #ccc; word-break: break-all; }
+    .value.hi   { color: #7ee8a2; font-weight: bold; }
+    .value.warn { color: #f5a623; }
+    .value.err  { color: #e05555; }
+    .value.dim  { color: #444; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+    .badge.ok   { background: #1a3a1a; color: #7ee8a2; }
+    .badge.warn { background: #3a2a00; color: #f5a623; }
+    .badge.err  { background: #3a0a0a; color: #e05555; }
+    button { padding: 10px 20px; border: none; border-radius: 6px; font-size: 0.82rem; font-family: inherit; cursor: pointer; transition: opacity 0.15s; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary   { background: #3a7bfd; color: #fff; }
+    .btn-secondary { background: #2a2a2a; color: #ccc; }
+    button:not(:disabled):hover { opacity: 0.85; }
+    input, select { background: #111; border: 1px solid #333; border-radius: 6px; color: #e0e0e0; font-size: 0.82rem; font-family: inherit; padding: 9px 12px; width: 100%; }
+    input:focus, select:focus { outline: none; border-color: #3a7bfd; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 0.72rem; color: #666; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .status-box { background: #0a0a0a; border: 1px solid #222; border-radius: 6px; padding: 14px; font-size: 0.78rem; line-height: 2; }
+    .status-box .step        { color: #333; }
+    .status-box .step.active { color: #f5a623; }
+    .status-box .step.done   { color: #7ee8a2; }
+    .status-box .step.err    { color: #e05555; }
+    .events-list { max-height: 280px; overflow-y: auto; }
+    .event-item { border-bottom: 1px solid #1e1e1e; padding: 10px 0; font-size: 0.75rem; }
+    .event-item:last-child { border-bottom: none; }
+    .event-type { color: #7ee8a2; font-weight: bold; }
+    .event-meta { color: #555; margin-top: 2px; }
+    .divider { border: none; border-top: 1px solid #1e1e1e; margin: 16px 0; }
+    .note { font-size: 0.7rem; color: #444; margin-top: 8px; }
+    a { color: #3a7bfd; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Balance table */
+    .balance-table { width: 100%; border-collapse: collapse; }
+    .balance-table td { padding: 9px 0; border-bottom: 1px solid #1e1e1e; font-size: 0.8rem; }
+    .balance-table tr:last-child td { border-bottom: none; }
+    .net-label { color: #777; }
+    .net-bal   { text-align: right; }
+
+    /* Transfer flow box (TYPE A) */
+    .flow-box { background: #0d0d0d; border: 1px solid #222; border-radius: 6px; padding: 12px 16px; margin-bottom: 14px; }
+    .flow-step { font-size: 0.74rem; color: #555; padding: 3px 0; }
+    .flow-step::before { content: '→ '; color: #3a7bfd; }
+
+    /* TYPE A source selection */
+    .source-options { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+    .source-option { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid #2a2a2a; border-radius: 6px; font-size: 0.78rem; cursor: default; }
+    .source-option.active { border-color: #3a7bfd; background: #0d1829; cursor: pointer; }
+    .source-option.future { opacity: 0.38; }
+    .source-option input[type="radio"] { accent-color: #3a7bfd; flex-shrink: 0; }
+    .source-label { color: #ccc; flex: 1; }
+    .source-net { color: #3a7bfd; font-size: 0.72rem; }
+    .source-badge { color: #555; font-size: 0.68rem; border: 1px solid #2a2a2a; border-radius: 3px; padding: 1px 6px; white-space: nowrap; }
+
+    /* TYPE B two-button layout */
+    .type-b-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
+    .type-b-option { background: #0d0d0d; border: 1px solid #2a2a2a; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+    .type-b-option .type-b-btn { width: 100%; }
+    .type-b-hint { font-size: 0.7rem; color: #555; line-height: 1.6; }
+
+    /* Multi-source mode */
+    .mse-toggle-link { display: inline-block; margin: 10px 0 6px; font-size: 0.72rem; color: #555; cursor: pointer; user-select: none; }
+    .mse-toggle-link:hover { color: #3a7bfd; }
+    .mse-toggle-link.active { color: #3a7bfd; }
+    .mse-alloc-row { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid #222; border-radius: 6px; margin-bottom: 5px; transition: border-color .15s; }
+    .mse-alloc-row.has-amount { border-color: #2a3a4a; }
+    .mse-alloc-net  { font-size: 0.72rem; color: #3a7bfd; min-width: 20px; font-weight: bold; }
+    .mse-alloc-name { font-size: 0.72rem; color: #666; flex: 1; }
+    .mse-alloc-bal  { font-size: 0.68rem; color: #7ee8a2; min-width: 90px; text-align: right; }
+    .mse-alloc-input { width: 76px; text-align: right; padding: 5px 8px; }
+    .mse-total-row { display: flex; justify-content: space-between; padding: 8px 10px; background: #0a0a0a; border-radius: 6px; font-size: 0.78rem; margin-top: 2px; }
+    .mse-card { background: #161616; border: 1px solid #1a2a3a; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+    .mse-card h2 { font-size: 0.8rem; color: #6688cc; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px; }
+    .mse-step { border: 1px solid #222; border-radius: 6px; padding: 11px 14px; margin-bottom: 7px; transition: border-color .2s; }
+    .mse-step.current { border-color: #3a7bfd; background: #0d1829; }
+    .mse-step.done    { border-color: #1a3a1a; background: #080e08; }
+    .mse-step.waiting { opacity: 0.4; }
+    .mse-step.err     { border-color: #3a1a1a; background: #0e0808; }
+    .mse-step-header  { display: flex; align-items: center; gap: 10px; }
+    .mse-step-num     { font-size: 0.7rem; color: #444; min-width: 18px; }
+    .mse-step-net     { font-size: 0.75rem; color: #6688cc; }
+    .mse-step-amt     { font-size: 0.75rem; color: #ccc; }
+    .mse-step-badge   { font-size: 0.68rem; margin-left: auto; }
+    .mse-step-detail  { font-size: 0.71rem; color: #666; margin-top: 5px; word-break: break-all; }
+
+    /* Multi-ops toggle button */
+    .multi-ops-btn        { font-size: 0.76rem; padding: 7px 14px; border-radius: 6px; border: none; background: #3a7bfd; color: #fff; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+    .multi-ops-btn:hover  { opacity: 0.85; }
+    .multi-ops-btn.active { background: #1a2a0a; border: 1px solid #3a6a1a; color: #7ee8a2; }
+
+    /* Modal overlay */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.78); z-index: 200; display: none; align-items: center; justify-content: center; padding: 20px; }
+    .modal-box     { background: #161616; border: 1px solid #2a2a2a; border-radius: 10px; padding: 28px; max-width: 500px; width: 100%; }
+    .modal-title   { font-size: 0.92rem; color: #fff; margin-bottom: 4px; font-weight: bold; }
+    .modal-sub     { font-size: 0.68rem; color: #555; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 18px; }
+    .modal-body    { font-size: 0.78rem; color: #aaa; line-height: 1.8; margin-bottom: 20px; }
+    .modal-body ul { margin-left: 16px; }
+    .modal-body li { margin-bottom: 2px; }
+    .modal-warn    { margin-top: 12px; padding: 10px 14px; background: #1a1600; border: 1px solid #3a3000; border-radius: 6px; color: #f5a623; font-size: 0.77rem; line-height: 1.6; }
+    .modal-ack     { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 0.78rem; color: #ccc; margin-bottom: 20px; user-select: none; }
+    .modal-ack input { width: 16px; height: 16px; accent-color: #3a7bfd; flex-shrink: 0; cursor: pointer; }
+    .modal-footer  { display: flex; gap: 10px; justify-content: flex-end; }
+    .modal-footer button { font-size: 0.78rem; }
+
+    /* Global balance */
+    .global-bal       { display: flex; align-items: baseline; gap: 10px; margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px solid #1e1e1e; }
+    .global-bal-label { font-size: 0.68rem; color: #555; text-transform: uppercase; letter-spacing: 0.07em; }
+    .global-bal-val   { font-size: 1.5rem; color: #7ee8a2; font-weight: bold; letter-spacing: -0.02em; }
+    .global-bal-unit  { font-size: 0.75rem; color: #555; }
+    .multi-ops-bar    { margin-top: 16px; padding-top: 14px; border-top: 1px solid #1e1e1e; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .multi-ops-hint   { font-size: 0.71rem; color: #555; }
+  </style>
+</head>
+<body>
+
+<h1>EQI DApp — MetaNetwork MVP</h1>
+<p class="subtitle">proof-of-mechanism testnet · tEQUI · 4 networks · A_ACTIVE = 100,000</p>
+
+<!-- 1. Wallet -->
+<div class="card">
+  <h2>Wallet</h2>
+  <div id="wallet-disconnected">
+    <button class="btn-primary" onclick="connectWallet()">Connect MetaMask</button>
+    <p class="note" style="margin-top:10px">Account selection prompt appears on every connect.</p>
+  </div>
+  <div id="wallet-connected" hidden>
+    <div class="row"><span class="label">Address</span><span class="value" id="w-address">—</span></div>
+    <div class="row"><span class="label">Network</span><span class="value" id="w-network">—</span></div>
+    <div class="row"><span class="label">Status</span><span id="w-net-badge">—</span></div>
+    <hr class="divider">
+    <button class="btn-secondary" onclick="refreshBalances()" style="margin-right:8px">Refresh Balances</button>
+    <button class="btn-secondary" onclick="switchToNetwork()" style="margin-right:8px">Switch Network</button>
+    <button class="btn-secondary" onclick="disconnectWallet()">Disconnect</button>
+  </div>
+</div>
+
+<!-- 2. tEQUI Balances — All Networks -->
+<div class="card" id="balance-card" hidden>
+  <h2>tEQUI Balance — All Networks</h2>
+
+  <!-- Global balance -->
+  <div class="global-bal">
+    <span class="global-bal-label">Total balance</span>
+    <span class="global-bal-val" id="bal-total">—</span>
+    <span class="global-bal-unit">tEQUI</span>
+  </div>
+
+  <table class="balance-table">
+    <tbody>
+      <tr><td class="net-label">A — Ethereum Sepolia</td>        <td class="net-bal" id="bal-A"><span class="value dim">—</span></td></tr>
+      <tr><td class="net-label">B — BNB Smart Chain Testnet</td> <td class="net-bal" id="bal-B"><span class="value dim">—</span></td></tr>
+      <tr><td class="net-label">C — Polygon PoS Amoy</td>        <td class="net-bal" id="bal-C"><span class="value dim">—</span></td></tr>
+      <tr><td class="net-label">D — Arbitrum Sepolia</td>        <td class="net-bal" id="bal-D"><span class="value dim">—</span></td></tr>
+    </tbody>
+  </table>
+
+  <!-- Multi-ops toggle -->
+  <div class="multi-ops-bar">
+    <button id="btn-multi-ops" class="multi-ops-btn" onclick="onMultiOpsToggle()">Enable Multi-Operations</button>
+    <span id="multi-ops-hint" class="multi-ops-hint">Combine balances from multiple networks in one transfer</span>
+  </div>
+</div>
+
+<!-- 3. Transfer -->
+<div class="card" id="transfer-card" hidden>
+  <h2>Transfer tEQUI</h2>
+
+  <div class="form-row">
+    <div class="form-group">
+      <label>Amount (tEQUI, integer)</label>
+      <input type="number" id="f-amount" min="1" step="1" placeholder="e.g. 500" oninput="onFormChange()">
+    </div>
+    <div class="form-group">
+      <label>Target network</label>
+      <select id="f-target-network" onchange="onTargetNetworkChange()">
+        <option value="">— select —</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>Recipient address (on target network)</label>
+    <input type="text" id="f-recipient" placeholder="0x..." oninput="onRecipientInput()">
+    <div id="addr-check" style="margin-top:6px;min-height:20px"></div>
+  </div>
+
+  <!-- TYPE A: cross-network -->
+  <div id="type-a-view" hidden>
+    <div class="form-group" style="margin-bottom:16px">
+      <label>Source network</label>
+      <div class="source-options">
+        <label class="source-option active">
+          <input type="radio" name="source-mode" value="own" checked>
+          <span class="source-label">Own choice</span>
+          <span class="source-net" id="type-a-source-net">—</span>
+        </label>
+        <label class="source-option future" title="Requires mainnet gas price data">
+          <input type="radio" name="source-mode" value="gas" disabled>
+          <span class="source-label">Optimal by gas cost</span>
+          <span class="source-badge">Requires mainnet data</span>
+        </label>
+        <label class="source-option future" title="Requires real-time block finality data">
+          <input type="radio" name="source-mode" value="time" disabled>
+          <span class="source-label">Optimal by speed</span>
+          <span class="source-badge">Requires mainnet data</span>
+        </label>
+      </div>
+    </div>
+    <span id="mse-toggle-link" class="mse-toggle-link" onclick="toggleMseMode()" hidden>⊕ Use multiple source networks</span>
+
+    <!-- Multi-source allocation panel (hidden until toggle) -->
+    <div id="mse-alloc" hidden>
+      <div class="form-group" style="margin-top:4px">
+        <label>Source allocation — how much from each network</label>
+        <div id="mse-alloc-rows"></div>
+        <div class="mse-total-row">
+          <span style="color:#555">Total allocated</span>
+          <span id="mse-total-val" style="color:#888">0 / 0 tEQUI</span>
+        </div>
+        <p class="note" style="margin-top:6px">Minimum 2 sources. Total must equal amount above.</p>
+      </div>
+      <button class="btn-primary" id="btn-mse-start" onclick="startMse()" disabled>Begin Multi-Source Transfer</button>
+    </div>
+
+    <div class="flow-box" id="type-a-flowbox">
+      <div class="flow-step" id="type-a-step1">Step 1: You send tEQUI to IT-EOA on source network (you pay gas)</div>
+      <div class="flow-step">Step 2: MetaRegistry records transfer — 0 gas</div>
+      <div class="flow-step" id="type-a-step3">Step 3: Executor delivers to recipient on target network (MetaNetwork pays gas)</div>
+    </div>
+    <button class="btn-primary" id="btn-send-a" onclick="sendEntryA()" disabled>Send to IT-EOA →</button>
+  </div>
+
+  <!-- TYPE B: same-network -->
+  <div id="type-b-view" hidden>
+    <div class="type-b-grid">
+      <div class="type-b-option">
+        <button class="btn-secondary type-b-btn" id="btn-send-direct" onclick="sendDirectOnchain()" disabled>Direct on-chain</button>
+        <p class="type-b-hint">You send tEQUI directly to the recipient. One gas payment (you pay). Observer records it for MetaRegistry visibility. Cheaper, instant delivery.</p>
+      </div>
+      <div class="type-b-option">
+        <button class="btn-primary type-b-btn" id="btn-send-meta" onclick="sendViaMetaNetwork()" disabled>Via MetaNetwork</button>
+        <p class="type-b-hint">You send tEQUI to IT-EOA (you pay entry gas). MetaRegistry routes internally. Executor delivers to recipient — IT-EOA pays exit gas. Full registry control. <strong style="color:#f5a623">Two gas payments on the same network</strong> — prefer Direct on-chain for cost efficiency.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 4. Transaction Status -->
+<div class="card" id="status-card" hidden>
+  <h2>Transaction Status</h2>
+  <div class="status-box">
+    <div class="step" id="st-1">① —</div>
+    <div class="step" id="st-2">② —</div>
+    <div class="step" id="st-3">③ —</div>
+    <div class="step" id="st-4">④ —</div>
+  </div>
+  <div id="tx-link" hidden style="margin-top:12px;font-size:0.78rem"></div>
+</div>
+
+<!-- 5. Multi-Source Transfer Progress -->
+<div class="mse-card" id="mse-card" hidden>
+  <h2>Multi-Source Transfer <span id="mse-card-env" style="color:#444;font-size:0.68rem;font-weight:normal;text-transform:none;letter-spacing:0"></span></h2>
+  <div id="mse-steps-list"></div>
+  <div id="mse-delivery-msg" style="margin-top:10px;font-size:0.78rem"></div>
+</div>
+
+<!-- 6. MetaRegistry State -->
+<div class="card">
+  <h2>MetaRegistry State</h2>
+  <button class="btn-secondary" onclick="loadState()" style="margin-bottom:14px">Load State</button>
+  <div id="registry-state"></div>
+</div>
+
+<!-- 6. Recent Events -->
+<div class="card">
+  <h2>Recent Events</h2>
+  <button class="btn-secondary" onclick="loadEvents()" style="margin-bottom:14px">Load Events</button>
+  <div class="events-list" id="events-list"></div>
+</div>
+
+<!-- Multi-Operations modals -->
+<div id="modal-overlay" class="modal-overlay" onclick="if(event.target===this)closeMultiOpsModal()">
+
+  <!-- Enable modal -->
+  <div id="modal-enable-multi" class="modal-box" style="display:none">
+    <p class="modal-title">Multi-Source Operations</p>
+    <p class="modal-sub">How it works</p>
+    <div class="modal-body">
+      <p style="margin-bottom:10px">Multi-source mode lets you combine balances from multiple networks into a single delivery. For example: send 500 tEQUI to Network D by contributing from Networks A, B, and C simultaneously.</p>
+      <p style="margin-bottom:6px;color:#ccc">Key points:</p>
+      <ul>
+        <li>You sign <strong style="color:#ccc">N separate MetaMask transactions</strong> — one per source network</li>
+        <li>Each transaction sends tEQUI to the IT-EOA on that source network</li>
+        <li>Delivery happens only after <strong style="color:#ccc">all source transactions are confirmed</strong></li>
+        <li>The operation has a <strong style="color:#ccc">5-minute window</strong> to collect all sources</li>
+        <li>If the window expires or delivery fails, each source is eligible for individual refund via the admin panel</li>
+      </ul>
+      <div class="modal-warn">
+        <strong>All-or-nothing:</strong> delivery to the recipient only happens when every declared source is received. If not all arrive in time, funds can be returned to each sender individually.
+      </div>
+    </div>
+    <label class="modal-ack">
+      <input type="checkbox" id="chk-enable-multi"
+             onchange="document.getElementById('btn-confirm-enable').disabled = !this.checked">
+      I understand how multi-source operations work
+    </label>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeMultiOpsModal()">Cancel</button>
+      <button class="btn-primary" id="btn-confirm-enable" disabled onclick="confirmEnableMultiOps()">Continue</button>
+    </div>
+  </div>
+
+  <!-- Disable modal -->
+  <div id="modal-disable-multi" class="modal-box" style="display:none">
+    <p class="modal-title">Disable Multi-Source Operations</p>
+    <p class="modal-sub">What changes</p>
+    <div class="modal-body">
+      <p style="margin-bottom:10px">After disabling:</p>
+      <ul>
+        <li>The Transfer form returns to <strong style="color:#ccc">single-source mode only</strong></li>
+        <li>Initiating new multi-source transfers will not be available</li>
+        <li>Already-started operations with COLLECTING status <strong style="color:#ccc">continue processing independently</strong> — disabling this does not cancel or affect them in any way</li>
+      </ul>
+      <p style="margin-top:10px;color:#666">You can re-enable multi-source operations at any time using the same button.</p>
+    </div>
+    <label class="modal-ack">
+      <input type="checkbox" id="chk-disable-multi"
+             onchange="document.getElementById('btn-confirm-disable').disabled = !this.checked">
+      I understand — disable multi-source operations
+    </label>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeMultiOpsModal()">Cancel</button>
+      <button class="btn-primary" id="btn-confirm-disable" disabled onclick="confirmDisableMultiOps()">Confirm</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Sign error modal (separate overlay — no backdrop-click close, user must choose) -->
+<div id="modal-overlay-sign" class="modal-overlay" style="z-index:300;display:none">
+  <div class="modal-box">
+    <p class="modal-title">Wallet signature error</p>
+    <p class="modal-sub" id="sign-err-sub"></p>
+    <div class="modal-warn" id="sign-err-msg" style="margin-top:0;margin-bottom:16px;word-break:break-word;white-space:pre-wrap"></div>
+    <label class="modal-ack">
+      <input type="checkbox" id="chk-sign-err"
+             onchange="document.getElementById('btn-sign-retry').disabled = !this.checked">
+      I have reviewed the error
+    </label>
+    <p class="modal-body" style="margin-bottom:16px;color:#555;font-size:0.74rem;line-height:1.7">
+      If you cancel, any tokens already sent to the IT-EOA on confirmed steps will be returned to their respective wallets and networks.
+    </p>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="btn-sign-cancel" onclick="_resolveSignModal('cancel')">Cancel operation</button>
+      <button class="btn-primary"   id="btn-sign-retry"  onclick="_resolveSignModal('retry')" disabled>Retry signature</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.16.0/dist/ethers.umd.min.js"></script>
+<script>
+let CONTRACT_ADDRESS   = '';
+const TRANSFER_ABI     = ['function transfer(address to, uint256 amount) returns (bool)'];
+
+let NETWORKS     = {};
+let CHAIN_TO_NET = {};
+let provider     = null;
+let signer       = null;
+let account      = null;
+let currentNet   = null;
+let addrTimer    = null;
+let _onchainBal  = {}; // { A: number|null, B: ... } — updated by refreshBalances
+
+// MSE state
+let mseMode         = false;
+let mseEnvelopeId   = null;
+let mseProgress     = []; // [{ source_network, from_address, expected_amount, status, tx_hash, detail }]
+let multiOpsEnabled = false; // controlled by Enable/Disable Multi-Operations button
+let _signModalResolve = null; // resolve fn for the pending sign-error modal Promise
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+window.addEventListener('load', async () => {
+  await loadConfig();
+  if (window.ethereum) {
+    window.ethereum.on('accountsChanged', accs => {
+      if (!accs.length) disconnectWallet();
+      else { account = accs[0]; updateWalletUI(); }
+    });
+    window.ethereum.on('chainChanged', () => {
+      if (mseEnvelopeId) {
+        // During MSE: update currentNet then re-evaluate the active step so UI reflects new network
+        window.ethereum.request({ method: 'eth_chainId' }).then(hex => {
+          currentNet = CHAIN_TO_NET[parseInt(hex, 16)] || null;
+          const idx = mseProgress.findIndex(s => s.status === 'current');
+          if (idx >= 0) runMseStep(idx);
+        });
+      } else {
+        location.reload();
+      }
+    });
+  }
+});
+
+async function loadConfig() {
+  try {
+    const d = await (await fetch('/registry/config')).json();
+    if (d.ok) {
+      CONTRACT_ADDRESS = d.contract_address || CONTRACT_ADDRESS;
+      d.networks.forEach(n => {
+        NETWORKS[n.network_id]  = n;
+        CHAIN_TO_NET[n.chainId] = n.network_id;
+      });
+    }
+  } catch (_) {}
+  populateTargetNetworks();
+}
+
+// ── Wallet ────────────────────────────────────────────────────────────────────
+async function connectWallet() {
+  if (!window.ethereum) { alert('MetaMask not found. Please install MetaMask.'); return; }
+  try {
+    provider = new ethers.BrowserProvider(window.ethereum);
+    // Force account-selection prompt on every connect
+    await provider.send('wallet_requestPermissions', [{ eth_accounts: {} }]);
+    await provider.send('eth_requestAccounts', []);
+    signer  = await provider.getSigner();
+    account = await signer.getAddress();
+    await updateWalletUI();
+    document.getElementById('wallet-disconnected').hidden = true;
+    document.getElementById('wallet-connected').hidden   = false;
+    document.getElementById('balance-card').hidden       = false;
+  } catch (e) {
+    const msg = e?.message || String(e);
+    if (!msg.includes('rejected') && e?.code !== 4001) alert('Connection failed: ' + msg);
+  }
+}
+
+function disconnectWallet() {
+  provider = signer = account = currentNet = null;
+  document.getElementById('wallet-disconnected').hidden = false;
+  document.getElementById('wallet-connected').hidden   = true;
+  document.getElementById('balance-card').hidden       = true;
+  document.getElementById('transfer-card').hidden      = true;
+  document.getElementById('status-card').hidden        = true;
+}
+
+async function updateWalletUI() {
+  if (!provider || !account) return;
+  document.getElementById('w-address').textContent = account;
+
+  const chainIdHex = await window.ethereum.request({ method: 'eth_chainId' });
+  const chainId    = parseInt(chainIdHex, 16);
+const net_id     = CHAIN_TO_NET[chainId];
+  currentNet    = net_id || null;
+
+  if (net_id) {
+    document.getElementById('w-network').textContent =
+      `${NETWORKS[net_id].name} (chain ${chainId}) → Network ${net_id}`;
+    document.getElementById('w-net-badge').innerHTML = '<span class="badge ok">SUPPORTED</span>';
+    document.getElementById('transfer-card').hidden  = false;
+  } else {
+    document.getElementById('w-network').textContent = `Unsupported chain ${chainId}`;
+    document.getElementById('w-net-badge').innerHTML =
+      '<span class="badge warn">NOT IN METANETWORK</span>' +
+      ' <button class="btn-secondary" style="margin-left:8px;font-size:12px;padding:2px 8px" ' +
+      'onclick="switchToNetwork()">Switch network</button>';
+    document.getElementById('transfer-card').hidden  = true;
+  }
+
+  updateTransferView();
+  await refreshBalances();
+}
+
+// ── Network switch ────────────────────────────────────────────────────────────
+async function switchToNetwork() {
+  const opts = Object.values(NETWORKS).map(n =>
+    `${n.network_id}: ${n.name} (chain ${n.chainId})`
+  ).join('\n');
+  const choice = prompt(`Switch MetaMask to:\n${opts}\n\nEnter network ID (A/B/C/D):`);
+  if (!choice) return;
+  const net = NETWORKS[choice.trim().toUpperCase()];
+  if (!net) { alert('Unknown network ID'); return; }
+  const chainHex = '0x' + net.chainId.toString(16);
+  try {
+    await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainHex }] });
+  } catch (e) {
+    alert('Switch failed: ' + (e.message || e));
+  }
+}
+
+// ── Balances ──────────────────────────────────────────────────────────────────
+async function refreshBalances() {
+  if (!account) return;
+  ['A', 'B', 'C', 'D'].forEach(n => setBalCell(n, 'loading…', 'dim'));
+  const totalEl = document.getElementById('bal-total');
+  if (totalEl) totalEl.textContent = '…';
+  try {
+    const d = await (await fetch(`/registry/balances?address=${encodeURIComponent(account)}`)).json();
+    if (d.ok) {
+      _onchainBal = d.balances;
+      let total = 0, anyNull = false;
+      Object.entries(d.balances).forEach(([net_id, bal]) => {
+        if (bal === null) { setBalCell(net_id, 'RPC error', 'err'); anyNull = true; }
+        else { setBalCell(net_id, `${bal.toLocaleString()} tEQUI`, bal > 0 ? 'hi' : 'dim'); total += bal; }
+      });
+      if (totalEl) totalEl.textContent = anyNull ? `≥ ${total.toLocaleString()}` : total.toLocaleString();
+      onFormChange();
+    }
+  } catch (_) {
+    ['A', 'B', 'C', 'D'].forEach(n => setBalCell(n, 'error', 'err'));
+    if (totalEl) totalEl.textContent = '—';
+  }
+}
+
+function setBalCell(net_id, text, cls) {
+  const el = document.getElementById(`bal-${net_id}`);
+  if (el) el.innerHTML = `<span class="value ${cls}">${text}</span>`;
+}
+
+// ── Transfer form ─────────────────────────────────────────────────────────────
+function populateTargetNetworks() {
+  const sel = document.getElementById('f-target-network');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— select —</option>';
+  Object.values(NETWORKS).forEach(n => {
+    const opt = document.createElement('option');
+    opt.value       = n.network_id;
+    opt.textContent = `${n.network_id} — ${n.name}`;
+    if (n.network_id === cur) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function onTargetNetworkChange() {
+  updateTransferView();
+  onFormChange();
+  scheduleAddrCheck();
+}
+
+function updateTransferView() {
+  const target = document.getElementById('f-target-network').value;
+  const typeA  = document.getElementById('type-a-view');
+  const typeB  = document.getElementById('type-b-view');
+
+  if (!target || !currentNet) { typeA.hidden = true; typeB.hidden = true; return; }
+
+  const isSame = (target === currentNet);
+  typeA.hidden = isSame;
+  typeB.hidden = !isSame;
+
+  if (!isSame && NETWORKS[currentNet]) {
+    document.getElementById('type-a-step1').textContent =
+      `Step 1: You send tEQUI to IT-EOA on Network ${currentNet} — you pay ${NETWORKS[currentNet].symbol} gas`;
+    document.getElementById('type-a-step3').textContent =
+      `Step 3: Executor delivers to recipient on Network ${target} — MetaNetwork pays gas`;
+    const srcNetEl = document.getElementById('type-a-source-net');
+    if (srcNetEl) srcNetEl.textContent = `Network ${currentNet} — ${NETWORKS[currentNet].name}`;
+  }
+}
+
+function onFormChange() {
+  const ok = isFormReady();
+  ['btn-send-a', 'btn-send-direct', 'btn-send-meta'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !ok;
+  });
+  if (mseMode) { buildMseAllocRows(); } else { onMseAllocChange(); }
+}
+
+function isFormReady() {
+  const amount    = parseInt(document.getElementById('f-amount').value, 10);
+  const target    = document.getElementById('f-target-network').value;
+  const recipient = document.getElementById('f-recipient').value.trim();
+  if (!account || !currentNet || !(amount > 0) || !target || recipient.length <= 10) return false;
+
+  // Block same-network self-transfer (source == target network AND same wallet address)
+  const recipientEl = document.getElementById('f-recipient');
+  if (currentNet === target && recipient.toLowerCase() === account.toLowerCase()) {
+    recipientEl.setCustomValidity('Self-transfer not allowed: recipient is the same as your wallet address on the same network.');
+    recipientEl.reportValidity();
+    return false;
+  }
+  recipientEl.setCustomValidity('');
+
+  const amtEl       = document.getElementById('f-amount');
+  const singleAvail = _onchainBal[currentNet];
+
+  if (singleAvail !== null && singleAvail !== undefined && amount > singleAvail) {
+    if (!multiOpsEnabled) {
+      amtEl.setCustomValidity(
+        `Exceeds on-chain balance on Network ${currentNet} (${(singleAvail || 0).toLocaleString()} tEQUI). ` +
+        `Use "Enable Multi-Operations" to combine balances across networks.`
+      );
+      amtEl.reportValidity();
+      return false;
+    }
+
+    // totalAvail = sum across all networks that can be used as sources.
+    // Target network is excluded only for true self-loops (recipient == sender);
+    // delivering to a DIFFERENT wallet on the target network is a valid MSE source.
+    const isSelf = recipient.toLowerCase() === account.toLowerCase();
+    const totalAvail = ['A','B','C','D']
+      .filter(n => !(n === target && isSelf))
+      .reduce((sum, n) => sum + (Number(_onchainBal[n]) || 0), 0);
+
+    if (amount > totalAvail) {
+      const msg = `Exceeds total available balance (${totalAvail.toLocaleString()} tEQUI across all source networks)`;
+      amtEl.setCustomValidity(msg);
+      amtEl.reportValidity();
+      return false;
+    }
+
+    // Amount fits across multiple source networks — auto-activate MSE toggle
+    amtEl.setCustomValidity('');
+    if (!mseMode) toggleMseMode();
+    return false;
+  }
+
+  amtEl.setCustomValidity('');
+  return true;
+}
+
+function onRecipientInput() {
+  onFormChange();
+  scheduleAddrCheck();
+}
+
+function scheduleAddrCheck() {
+  clearTimeout(addrTimer);
+  document.getElementById('addr-check').innerHTML = '';
+  const addr   = document.getElementById('f-recipient').value.trim();
+  const target = document.getElementById('f-target-network').value;
+  if (!addr || addr.length < 10 || !target) return;
+  addrTimer = setTimeout(() => runAddrCheck(addr, target), 600);
+}
+
+async function runAddrCheck(addr, target) {
+  try {
+    const d = await (await fetch(
+      `/registry/check-address?network_id=${target}&address=${encodeURIComponent(addr)}`
+    )).json();
+    if (!d.ok) return;
+    document.getElementById('addr-check').innerHTML = d.is_known
+      ? '<span class="badge ok">Known MetaRegistry wallet</span>'
+      : '<span class="badge warn">Unknown address — tokens tracked as UNAVAILABLE if sent direct</span>';
+  } catch (_) {}
+}
+
+// ── TYPE A: Cross-network entry ───────────────────────────────────────────────
+async function sendEntryA() {
+  const amount    = parseInt(document.getElementById('f-amount').value, 10);
+  const target    = document.getElementById('f-target-network').value;
+  const recipient = document.getElementById('f-recipient').value.trim();
+  if (!isFormReady()) return;
+
+  const itAddress = NETWORKS[currentNet]?.it_address;
+  if (!itAddress) { alert(`IT-EOA not configured for Network ${currentNet}.`); return; }
+
+  showStatusCard();
+  stepActive(1, `① MetaMask — send ${amount} tEQUI to IT-EOA on Network ${currentNet}…`);
+  stepDim(2); stepDim(3); stepDim(4);
+
+  try {
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, TRANSFER_ABI, signer);
+    const signRes = await _sendWithRetry(
+      () => contract.transfer(itAddress, ethers.parseUnits(String(amount), 18)),
+      `Network ${currentNet}`
+    );
+    if (!signRes.ok) { stepErr(1, '① Signature cancelled'); return; }
+    const tx = signRes.value;
+    stepDone(1, `① Signed & broadcast ✓  ${tx.hash}`);
+    setTxLink(tx.hash, currentNet);
+    stepActive(2, '② Waiting for on-chain confirmation…');
+
+    const receipt = await _waitForReceipt(tx.hash);
+    if (!receipt || receipt.status === 0) { stepErr(2, '② Transaction reverted on-chain'); return; }
+    stepDone(2, `② Confirmed — block ${receipt.blockNumber} ✓`);
+    stepActive(3, '③ Notifying MetaRegistry…');
+
+    const d = await postEntry({
+      tx_hash: tx.hash, source_network: currentNet,
+      target_network: target, recipient_address: recipient, amount,
+    });
+    if (d.ok) {
+      stepDone(3, '③ MetaRegistry updated ✓');
+      stepActive(4, `④ Executor queued — will deliver ${amount} tEQUI to ${recipient.slice(0, 12)}… on Network ${target}`);
+    } else {
+      stepErr(3, '③ MetaRegistry error: ' + (d.reason || 'unknown'));
+    }
+  } catch (e) { handleTxError(e); }
+}
+
+// ── TYPE B: Direct on-chain ───────────────────────────────────────────────────
+async function sendDirectOnchain() {
+  const amount    = parseInt(document.getElementById('f-amount').value, 10);
+  const recipient = document.getElementById('f-recipient').value.trim();
+  if (!isFormReady()) return;
+
+  showStatusCard();
+  stepActive(1, `① MetaMask — direct transfer of ${amount} tEQUI to ${recipient.slice(0, 12)}…`);
+  stepDim(2); stepDim(3); stepDim(4);
+
+  try {
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, TRANSFER_ABI, signer);
+    const signRes = await _sendWithRetry(
+      () => contract.transfer(recipient, ethers.parseUnits(String(amount), 18)),
+      `Network ${currentNet}`
+    );
+    if (!signRes.ok) { stepErr(1, '① Signature cancelled'); return; }
+    const tx = signRes.value;
+    stepDone(1, `① Signed & broadcast ✓  ${tx.hash}`);
+    setTxLink(tx.hash, currentNet);
+    stepActive(2, '② Waiting for on-chain confirmation…');
+
+    const receipt = await _waitForReceipt(tx.hash);
+    if (!receipt || receipt.status === 0) { stepErr(2, '② Transaction reverted on-chain'); return; }
+    stepDone(2, `② Confirmed — block ${receipt.blockNumber} ✓`);
+    stepDone(3, '③ Observer will record this transfer automatically (next poll ≤15 s)');
+    stepDim(4);
+  } catch (e) { handleTxError(e); }
+}
+
+// ── TYPE B: Via MetaNetwork ───────────────────────────────────────────────────
+async function sendViaMetaNetwork() {
+  const amount    = parseInt(document.getElementById('f-amount').value, 10);
+  const target    = document.getElementById('f-target-network').value;
+  const recipient = document.getElementById('f-recipient').value.trim();
+  if (!isFormReady()) return;
+
+  const itAddress = NETWORKS[currentNet]?.it_address;
+  if (!itAddress) { alert(`IT-EOA not configured for Network ${currentNet}.`); return; }
+
+  showStatusCard();
+  stepActive(1, `① MetaMask — send ${amount} tEQUI to IT-EOA (you pay gas)…`);
+  stepDim(2); stepDim(3); stepDim(4);
+
+  try {
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, TRANSFER_ABI, signer);
+    const signRes = await _sendWithRetry(
+      () => contract.transfer(itAddress, ethers.parseUnits(String(amount), 18)),
+      `Network ${currentNet}`
+    );
+    if (!signRes.ok) { stepErr(1, '① Signature cancelled'); return; }
+    const tx = signRes.value;
+    stepDone(1, `① Signed & broadcast ✓  ${tx.hash}`);
+    setTxLink(tx.hash, currentNet);
+    stepActive(2, '② Waiting for on-chain confirmation…');
+
+    const receipt = await _waitForReceipt(tx.hash);
+    if (!receipt || receipt.status === 0) { stepErr(2, '② Transaction reverted on-chain'); return; }
+    stepDone(2, `② Confirmed — block ${receipt.blockNumber} ✓`);
+    stepActive(3, '③ MetaRegistry recording…');
+
+    const d = await postEntry({
+      tx_hash: tx.hash, source_network: currentNet,
+      target_network: target, recipient_address: recipient, amount,
+    });
+    if (d.ok) {
+      stepDone(3, '③ MetaRegistry updated ✓');
+      stepActive(4, `④ Executor will send ${amount} tEQUI to ${recipient.slice(0, 12)}… on Network ${target} (IT-EOA pays gas)`);
+    } else {
+      stepErr(3, '③ MetaRegistry error: ' + (d.reason || 'unknown'));
+    }
+  } catch (e) { handleTxError(e); }
+}
+
+// ── Receipt polling (replaces tx.wait which fails on unstable MetaMask) ──────
+async function _waitForReceipt(txHash, attempts = 40, intervalMs = 4000) {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const r = await provider.getTransactionReceipt(txHash);
+      if (r && r.blockNumber) return r;
+    } catch (_) {}
+    await new Promise(res => setTimeout(res, intervalMs));
+  }
+  return null; // timeout after ~160s
+}
+
+// ── API helpers ───────────────────────────────────────────────────────────────
+async function postEntry(payload) {
+  const r = await fetch('/entry', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(payload),
+  });
+  return r.json();
+}
+
+// ── MetaRegistry State ────────────────────────────────────────────────────────
+async function loadState() {
+  const el = document.getElementById('registry-state');
+  el.innerHTML = '<span class="value dim">loading…</span>';
+  try {
+    const d = await (await fetch('/state')).json();
+    if (!d.ok) { el.innerHTML = '<span class="value err">Not initialized</span>'; return; }
+    const s = d.state;
+    let html = `<div class="row"><span class="label">Status</span>
+      <span class="badge ${s.status === 'ACTIVE' ? 'ok' : 'err'}">${s.status}</span></div>
+      <div class="row"><span class="label">Events</span><span class="value">${s.event_count}</span></div>`;
+    for (const [nid, net] of Object.entries(s.networks || {})) {
+      html += `<div class="row"><span class="label">Network ${nid}</span>
+        <span class="value">IT_ACTIVE=${net.IT_ACTIVE} IT_FROZEN=${net.IT_FROZEN} wallets=${net.wallet_active_total} UNAVAIL=${net.UNAVAILABLE}</span></div>`;
+    }
+    el.innerHTML = html;
+  } catch (_) {
+    el.innerHTML = '<span class="value err">Error loading state</span>';
+  }
+}
+
+async function loadEvents() {
+  const el = document.getElementById('events-list');
+  el.innerHTML = '<div class="event-item"><span class="value dim">loading…</span></div>';
+  try {
+    const d = await (await fetch('/events?limit=20')).json();
+    if (!d.ok || !d.events.length) { el.innerHTML = '<div class="event-item"><span class="value dim">No events yet</span></div>'; return; }
+    el.innerHTML = [...d.events].reverse().map(e => `
+      <div class="event-item">
+        <span class="event-type">${e.event_type}</span>
+        <div class="event-meta">
+          net=${e.network_id || '—'} · ${(e.from_address || '—').slice(0, 10)}… → ${(e.to_address || '—').slice(0, 10)}…
+          · amt=${e.amount ?? '—'} · ${new Date(e.created_at || 0).toLocaleTimeString()}
+        </div>
+      </div>`).join('');
+  } catch (_) {
+    el.innerHTML = '<div class="value err">Error loading events</div>';
+  }
+}
+
+// ── UI helpers ────────────────────────────────────────────────────────────────
+function showStatusCard() {
+  const el = document.getElementById('status-card');
+  el.hidden = false;
+  el.scrollIntoView({ behavior: 'smooth' });
+  document.getElementById('tx-link').hidden = true;
+}
+
+function setTxLink(hash, net_id) {
+  const map = { A: 'https://sepolia.etherscan.io', B: 'https://testnet.bscscan.com', C: 'https://amoy.polygonscan.com', D: 'https://sepolia.arbiscan.io' };
+  const el  = document.getElementById('tx-link');
+  el.hidden = false;
+  el.innerHTML = `Tx: <a href="${map[net_id] || '#'}/tx/${hash}" target="_blank">${hash}</a>`;
+}
+
+function stepActive(n, text) { _step(n, text, 'active'); }
+function stepDone(n, text)   { _step(n, text, 'done'); }
+function stepErr(n, text)    { _step(n, text, 'err'); }
+function stepDim(n)          { _step(n, `${'①②③④'[n - 1]} —`, ''); }
+
+function _step(n, text, cls) {
+  const el = document.getElementById(`st-${n}`);
+  el.className = `step ${cls}`;
+  el.textContent = text;
+}
+
+function handleTxError(e, step = 1) {
+  const msg = e?.reason || e?.message || String(e);
+  if (msg.includes('user rejected') || msg.includes('ACTION_REJECTED') || e?.code === 4001) {
+    stepErr(1, '① User rejected MetaMask signature');
+  } else {
+    stepErr(step, `${'①②③④'[step - 1]} Error: ` + msg.slice(0, 200));
+  }
+}
+
+// ── Multi-source (MSE) ────────────────────────────────────────────────────────
+
+const MSE_NET_NAMES = { A: 'Ethereum Sepolia', B: 'BNB Testnet', C: 'Polygon Amoy', D: 'Arbitrum Sepolia' };
+
+function toggleMseMode() {
+  mseMode = !mseMode;
+  const link   = document.getElementById('mse-toggle-link');
+  const alloc  = document.getElementById('mse-alloc');
+  const btnA   = document.getElementById('btn-send-a');
+  const flowBox = document.getElementById('type-a-flowbox');
+
+  link.classList.toggle('active', mseMode);
+  link.textContent = mseMode ? '⊖ Back to single-source' : '⊕ Use multiple source networks';
+  alloc.hidden  = !mseMode;
+  if (btnA)    btnA.hidden    = mseMode;
+  if (flowBox) flowBox.hidden = mseMode;
+
+  if (mseMode) buildMseAllocRows();
+}
+
+// ── Multi-Operations toggle ───────────────────────────────────────────────────
+function _multiOpsKey(type) {
+  return `mse_ack_${type}_${(account || '').toLowerCase()}`;
+}
+
+function onMultiOpsToggle() {
+  if (!multiOpsEnabled) {
+    if (localStorage.getItem(_multiOpsKey('enable'))) {
+      _applyMultiOps(true);
+    } else {
+      document.getElementById('chk-enable-multi').checked = false;
+      document.getElementById('btn-confirm-enable').disabled = true;
+      document.getElementById('modal-enable-multi').style.display = 'block';
+      document.getElementById('modal-disable-multi').style.display = 'none';
+      document.getElementById('modal-overlay').style.display = 'flex';
+    }
+  } else {
+    // Disable confirmation shown every time (not one-time)
+    document.getElementById('chk-disable-multi').checked = false;
+    document.getElementById('btn-confirm-disable').disabled = true;
+    document.getElementById('modal-disable-multi').style.display = 'block';
+    document.getElementById('modal-enable-multi').style.display = 'none';
+    document.getElementById('modal-overlay').style.display = 'flex';
+  }
+}
+
+function confirmEnableMultiOps() {
+  localStorage.setItem(_multiOpsKey('enable'), '1');
+  closeMultiOpsModal();
+  _applyMultiOps(true);
+}
+
+function confirmDisableMultiOps() {
+  closeMultiOpsModal();
+  _applyMultiOps(false);
+}
+
+function closeMultiOpsModal() {
+  document.getElementById('modal-overlay').style.display = 'none';
+}
+
+// ── Sign error modal ──────────────────────────────────────────────────────────
+// Returns a Promise that resolves to 'retry' or 'cancel'.
+// context: optional label shown in modal sub-heading (e.g. "Network A / Step 2 of 3")
+function _showSignErrorModal(err, context) {
+  return new Promise(resolve => {
+    _signModalResolve = resolve;
+    const msg = err?.reason || err?.message || String(err);
+    document.getElementById('sign-err-msg').textContent = msg;
+    document.getElementById('sign-err-sub').textContent = context || '';
+    document.getElementById('chk-sign-err').checked = false;
+    document.getElementById('btn-sign-retry').disabled = true;
+    document.getElementById('modal-overlay-sign').style.display = 'flex';
+  });
+}
+
+function _resolveSignModal(action) {
+  document.getElementById('modal-overlay-sign').style.display = 'none';
+  if (_signModalResolve) { _signModalResolve(action); _signModalResolve = null; }
+}
+
+// Wraps a wallet sendTransaction call with retry-on-error modal.
+// Returns { ok: true, value: tx } on success, { ok: false } on user cancel.
+// Never throws — all wallet errors are caught internally.
+async function _sendWithRetry(sendFn, contextLabel) {
+  while (true) {
+    try {
+      return { ok: true, value: await sendFn() };
+    } catch (e) {
+      const action = await _showSignErrorModal(e, contextLabel);
+      if (action === 'cancel') return { ok: false };
+      // action === 'retry' → loop and call sendFn again
+    }
+  }
+}
+
+function _applyMultiOps(enabled) {
+  multiOpsEnabled = enabled;
+
+  // If disabling while MSE form is open, collapse it back to single-source
+  if (!enabled && mseMode) {
+    mseMode = false;
+    const link    = document.getElementById('mse-toggle-link');
+    const alloc   = document.getElementById('mse-alloc');
+    const btnA    = document.getElementById('btn-send-a');
+    const flowBox = document.getElementById('type-a-flowbox');
+    if (link)    { link.classList.remove('active'); link.textContent = '⊕ Use multiple source networks'; }
+    if (alloc)   alloc.hidden = true;
+    if (btnA)    btnA.hidden  = false;
+    if (flowBox) flowBox.hidden = false;
+  }
+
+  // Update toggle button appearance
+  const btn  = document.getElementById('btn-multi-ops');
+  const hint = document.getElementById('multi-ops-hint');
+  const link = document.getElementById('mse-toggle-link');
+  if (btn) {
+    btn.textContent = enabled ? 'Disable Multi-Operations' : 'Enable Multi-Operations';
+    btn.classList.toggle('active', enabled);
+  }
+  if (hint) hint.textContent = enabled
+    ? 'Multi-source mode active — amounts can span multiple networks'
+    : 'Combine balances from multiple networks in one transfer';
+  if (link) link.hidden = !enabled;
+
+  onFormChange();
+}
+
+function buildMseAllocRows() {
+  const target    = document.getElementById('f-target-network').value;
+  const amount    = parseInt(document.getElementById('f-amount').value, 10) || 0;
+  const recipient = (document.getElementById('f-recipient').value || '').trim().toLowerCase();
+  const isSelf    = recipient === account.toLowerCase();
+  // Exclude target network as a source only for true self-loops (recipient == sender)
+  const nets      = ['A','B','C','D'].filter(n => !(n === target && isSelf) && (_onchainBal[n] || 0) > 0);
+
+  const wrap = document.getElementById('mse-alloc-rows');
+  if (!wrap) return;
+
+  if (nets.length < 2) {
+    wrap.innerHTML = '<p class="note" style="color:#e05555;margin-bottom:8px">Need balance on at least 2 source networks.</p>';
+    onMseAllocChange();
+    return;
+  }
+
+  // Greedy auto-fill: fill sources in order until amount is covered
+  let rem = amount;
+  const def = {};
+  for (const n of nets) {
+    const take = Math.min(_onchainBal[n] || 0, rem);
+    def[n] = take;
+    rem   -= take;
+    if (rem <= 0) break;
+  }
+
+  wrap.innerHTML = nets.map(n => {
+    const bal = _onchainBal[n] || 0;
+    const v   = def[n] || 0;
+    return `<div class="mse-alloc-row ${v > 0 ? 'has-amount' : ''}" id="mse-row-${n}">
+      <span class="mse-alloc-net">${n}</span>
+      <span class="mse-alloc-name">${MSE_NET_NAMES[n] || n}</span>
+      <span class="mse-alloc-bal">${(bal).toLocaleString()} avail</span>
+      <input type="number" class="mse-alloc-input" id="mse-amt-${n}"
+             min="0" max="${bal}" value="${v}" placeholder="0"
+             oninput="onMseAllocChange()">
+    </div>`;
+  }).join('');
+
+  onMseAllocChange();
+}
+
+function onMseAllocChange() {
+  const target    = document.getElementById('f-target-network').value;
+  const total     = parseInt(document.getElementById('f-amount').value, 10) || 0;
+  const recipient = (document.getElementById('f-recipient').value || '').trim().toLowerCase();
+  const isSelf    = recipient === (account || '').toLowerCase();
+  const nets      = ['A','B','C','D'].filter(n => !(n === target && isSelf));
+
+  let allocated = 0, sources = 0;
+  for (const n of nets) {
+    const el  = document.getElementById('mse-amt-' + n);
+    if (!el) continue;
+    const val = Math.max(0, parseInt(el.value, 10) || 0);
+    const bal = _onchainBal[n] || 0;
+    if (val > bal) { el.value = bal; }
+    allocated += Math.min(val, bal);
+    if (val > 0) sources++;
+    const row = document.getElementById('mse-row-' + n);
+    if (row) row.classList.toggle('has-amount', val > 0);
+  }
+
+  const tv  = document.getElementById('mse-total-val');
+  const btn = document.getElementById('btn-mse-start');
+  const ok  = allocated === total && sources >= 2 && total > 0;
+
+  if (tv) {
+    tv.textContent = `${allocated.toLocaleString()} / ${total.toLocaleString()} tEQUI`;
+    tv.style.color = ok ? '#7ee8a2' : allocated > total ? '#e05555' : '#f5a623';
+  }
+  if (btn) btn.disabled = !ok || !account;
+}
+
+async function startMse() {
+  const target    = document.getElementById('f-target-network').value;
+  const recipient = document.getElementById('f-recipient').value.trim();
+  const amount    = parseInt(document.getElementById('f-amount').value, 10);
+
+  const isSelf = recipient.toLowerCase() === account.toLowerCase();
+  const sources = ['A','B','C','D']
+    .filter(n => !(n === target && isSelf))
+    .map(n => ({ n, val: parseInt((document.getElementById('mse-amt-' + n) || {}).value, 10) || 0 }))
+    .filter(x => x.val > 0)
+    .map(x => ({ source_network: x.n, from_address: account, expected_amount: x.val }));
+
+  if (sources.length < 2) { alert('Select at least 2 source networks.'); return; }
+
+  const btn = document.getElementById('btn-mse-start');
+  if (btn) btn.disabled = true;
+
+  // Step 1: create envelope on backend
+  let createRes;
+  try {
+    createRes = await fetch('/entry/multi/create', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ target_network: target, recipient, sources }),
+    }).then(r => r.json());
+  } catch (e) {
+    alert('Network error creating envelope: ' + e.message);
+    if (btn) btn.disabled = false;
+    return;
+  }
+
+  if (!createRes.ok) {
+    alert('Failed to create multi-source envelope: ' + createRes.reason);
+    if (btn) btn.disabled = false;
+    return;
+  }
+
+  mseEnvelopeId = createRes.envelope_id;
+  mseProgress   = sources.map(s => ({ ...s, status: 'waiting', tx_hash: null, detail: '' }));
+
+  // Show MSE progress card
+  document.getElementById('status-card').hidden = true;
+  const card = document.getElementById('mse-card');
+  card.hidden = false;
+  document.getElementById('mse-card-env').textContent = mseEnvelopeId.slice(-16);
+  card.scrollIntoView({ behavior: 'smooth' });
+
+  renderMseSteps();
+  await runMseStep(0);
+}
+
+function renderMseSteps() {
+  const list = document.getElementById('mse-steps-list');
+  if (!list) return;
+
+  list.innerHTML = mseProgress.map((s, i) => {
+    const cls   = { waiting: 'waiting', current: 'current', done: 'done', error: 'err' }[s.status] || 'waiting';
+    const badge = { waiting: '<span style="color:#444">Waiting</span>', current: '<span style="color:#f5a623">⟳ In progress</span>', done: '<span style="color:#7ee8a2">✓ Done</span>', error: '<span style="color:#e05555">✗ Error</span>' }[s.status] || '';
+    const switchBtn = (s.status === 'current' && s.needsSwitch)
+      ? `<div style="margin-top:6px">
+           <button style="font-size:0.72rem;padding:5px 10px;background:#1a7a3a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit"
+                   onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'"
+                   onclick="mseSwitchToNet('${s.source_network}')">
+             ⇄ Switch MetaMask to Network ${s.source_network} — ${MSE_NET_NAMES[s.source_network] || ''}
+           </button>
+         </div>`
+      : '';
+    const signBtn = s.status === 'current'
+      ? `<div style="margin-top:8px"><button class="btn-primary" id="mse-sign-${i}" onclick="signMseSource(${i})">
+           Sign & send ${s.expected_amount.toLocaleString()} tEQUI → IT-EOA on Network ${s.source_network}
+         </button></div>`
+      : '';
+    return `<div class="mse-step ${cls}" id="mse-step-${i}">
+      <div class="mse-step-header">
+        <span class="mse-step-num">${i + 1}</span>
+        <span class="mse-step-net">Net ${s.source_network} — ${MSE_NET_NAMES[s.source_network] || ''}</span>
+        <span class="mse-step-amt">${s.expected_amount.toLocaleString()} tEQUI</span>
+        <span class="mse-step-badge">${badge}</span>
+      </div>
+      ${s.detail ? `<div class="mse-step-detail">${s.detail}</div>` : ''}
+      ${switchBtn}
+      ${signBtn}
+    </div>`;
+  }).join('') + `<div class="mse-step waiting" id="mse-step-delivery">
+    <div class="mse-step-header">
+      <span class="mse-step-num">${mseProgress.length + 1}</span>
+      <span class="mse-step-net" style="color:#555">Delivery (auto)</span>
+      <span class="mse-step-amt" style="color:#444">Triggered when all sources confirmed</span>
+    </div>
+  </div>`;
+}
+
+async function runMseStep(idx) {
+  if (idx >= mseProgress.length) { await pollMseDelivery(); return; }
+
+  const step = mseProgress[idx];
+  step.status = 'current';
+
+  const chainIdHex = await window.ethereum.request({ method: 'eth_chainId' }).catch(() => '0x0');
+  const chainId    = parseInt(chainIdHex, 16);
+  currentNet       = CHAIN_TO_NET[chainId] || null;
+
+  step.needsSwitch = currentNet !== step.source_network;
+  step.detail = step.needsSwitch
+    ? `Currently on Network ${currentNet || '?'}. Switch to Network ${step.source_network} to sign this step.`
+    : `Ready. Click Sign to send ${step.expected_amount} tEQUI to IT-EOA on Network ${step.source_network}.`;
+  renderMseSteps();
+}
+
+async function mseSwitchToNet(net_id) {
+  const net = NETWORKS[net_id];
+  if (!net) return;
+  try {
+    await window.ethereum.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: '0x' + net.chainId.toString(16) }],
+    });
+    // chainChanged fires → re-evaluates step automatically
+  } catch (e) {
+    if (e.code === 4902) {
+      alert(`Network ${net_id} (${net.name}) is not added in MetaMask. Please add it manually first.`);
+    } else if (e.code !== 4001) { // 4001 = user rejected — silent
+      alert('Switch failed: ' + (e.message || e));
+    }
+  }
+}
+
+async function signMseSource(idx) {
+  const step = mseProgress[idx];
+  const btn  = document.getElementById('mse-sign-' + idx);
+  if (btn) btn.disabled = true;
+
+  // Re-create provider/signer in case network changed since last interaction
+  try {
+    provider   = new ethers.BrowserProvider(window.ethereum);
+    signer     = await provider.getSigner();
+    const hex  = await window.ethereum.request({ method: 'eth_chainId' });
+    currentNet = CHAIN_TO_NET[parseInt(hex, 16)] || null;
+  } catch (e) {
+    step.detail = 'Cannot get signer: ' + e.message;
+    if (btn) btn.disabled = false;
+    renderMseSteps();
+    return;
+  }
+
+  if (currentNet !== step.source_network) {
+    step.needsSwitch = true;
+    step.detail = `Currently on Network ${currentNet || '?'}. Switch to Network ${step.source_network} to sign this step.`;
+    if (btn) btn.disabled = false;
+    renderMseSteps();
+    return;
+  }
+  step.needsSwitch = false;
+
+  const itAddress = NETWORKS[step.source_network]?.it_address;
+  if (!itAddress) {
+    step.status = 'error';
+    step.detail = `IT-EOA not configured for Network ${step.source_network}`;
+    renderMseSteps();
+    return;
+  }
+
+  step.detail = `Waiting for wallet signature…`;
+  renderMseSteps();
+
+  const contract  = new ethers.Contract(CONTRACT_ADDRESS, TRANSFER_ABI, signer);
+  const signRes   = await _sendWithRetry(
+    () => contract.transfer(itAddress, ethers.parseUnits(String(step.expected_amount), 18)),
+    `Network ${step.source_network}  /  Step ${idx + 1} of ${mseProgress.length}`
+  );
+  if (!signRes.ok) {
+    const hasConfirmed = mseProgress.slice(0, idx).some(s => s.status === 'done');
+    step.status = 'error';
+    step.detail = hasConfirmed
+      ? 'Cancelled — confirmed sources will be refunded via Admin panel when the 5-minute window expires.'
+      : 'Cancelled.';
+    if (btn) btn.disabled = false;
+    renderMseSteps();
+    if (hasConfirmed) {
+      const msgEl = document.getElementById('mse-delivery-msg');
+      if (msgEl) msgEl.innerHTML = '<span style="color:#f5a623">⚠ Tokens from confirmed steps are held safely — refund via Admin panel or await timeout.</span>';
+    }
+    return;
+  }
+  const tx = signRes.value;
+
+  step.tx_hash = tx.hash;
+  step.detail  = `Broadcast ✓  Waiting for on-chain confirmation… ${tx.hash.slice(0, 16)}…`;
+  renderMseSteps();
+
+  const receipt = await _waitForReceipt(tx.hash);
+  if (!receipt || receipt.status === 0) {
+    step.status = 'error';
+    step.detail = 'Transaction reverted on-chain. ' + tx.hash;
+    renderMseSteps();
+    return;
+  }
+
+  step.detail = `Confirmed block ${receipt.blockNumber} ✓  Notifying MetaRegistry…`;
+  renderMseSteps();
+
+  let d;
+  try {
+    d = await fetch(`/entry/multi/${mseEnvelopeId}/submit`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ tx_hash: tx.hash, source_network: step.source_network }),
+    }).then(r => r.json());
+  } catch (e) {
+    step.status = 'error';
+    step.detail = 'Backend error: ' + e.message;
+    renderMseSteps();
+    return;
+  }
+
+  if (!d.ok) {
+    step.status = 'error';
+    step.detail = 'Backend rejected: ' + (d.reason || 'unknown');
+    renderMseSteps();
+    return;
+  }
+
+  step.status = 'done';
+  step.detail = `MetaRegistry confirmed ${d.confirmed_count}/${d.source_count} ✓`;
+  renderMseSteps();
+
+  await runMseStep(idx + 1);
+}
+
+async function pollMseDelivery() {
+  const deliveryEl = document.getElementById('mse-step-delivery');
+  const msgEl      = document.getElementById('mse-delivery-msg');
+
+  if (deliveryEl) {
+    deliveryEl.className = 'mse-step current';
+    deliveryEl.querySelector('.mse-step-net').textContent  = 'Delivery — awaiting Executor…';
+    deliveryEl.querySelector('.mse-step-net').style.color  = '#f5a623';
+    deliveryEl.querySelector('.mse-step-amt').textContent  = '';
+  }
+  if (msgEl) msgEl.innerHTML = '<span style="color:#555">Polling delivery status…</span>';
+
+  for (let i = 0; i < 36; i++) {  // up to 3 min
+    await new Promise(r => setTimeout(r, 5000));
+    try {
+      const d = await fetch(`/entry/multi/${mseEnvelopeId}/status`).then(r => r.json());
+      if (!d.ok) continue;
+      const st = d.envelope.status;
+
+      if (st === 'COMPLETED') {
+        if (deliveryEl) deliveryEl.className = 'mse-step done';
+        if (msgEl) msgEl.innerHTML = '<span style="color:#7ee8a2;font-size:0.9rem">✓ All sources delivered on-chain!</span>';
+        await refreshBalances();
+        return;
+      }
+      if (st === 'FAILED') {
+        if (deliveryEl) deliveryEl.className = 'mse-step err';
+        if (msgEl) msgEl.innerHTML = '<span style="color:#e05555">✗ Delivery failed — open Admin panel to retry or refund.</span>';
+        return;
+      }
+    } catch (_) {}
+  }
+
+  if (msgEl) msgEl.innerHTML = '<span style="color:#f5a623">⚠ Taking longer than expected — check Admin panel for status.</span>';
+}
+</script>
+</body>
+</html>

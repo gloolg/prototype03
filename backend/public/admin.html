@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EQI Admin — MetaNetwork MVP</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'SF Mono', 'Fira Code', monospace; background: #0d0d0d; color: #e0e0e0; min-height: 100vh; padding: 24px; }
+    h1 { font-size: 1.2rem; color: #fff; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .subtitle { font-size: 0.75rem; color: #555; margin-bottom: 32px; }
+    .card { background: #161616; border: 1px solid #2a2a2a; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+    .card h2 { font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px; }
+    .row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+    .label { font-size: 0.72rem; color: #555; min-width: 110px; }
+    .value { font-size: 0.82rem; color: #ccc; word-break: break-all; }
+    .value.hi   { color: #7ee8a2; font-weight: bold; }
+    .value.warn { color: #f5a623; }
+    .value.err  { color: #e05555; }
+    .value.dim  { color: #444; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+    .badge.ok   { background: #1a3a1a; color: #7ee8a2; }
+    .badge.warn { background: #3a2a00; color: #f5a623; }
+    .badge.err  { background: #3a0a0a; color: #e05555; }
+    button { padding: 9px 18px; border: none; border-radius: 6px; font-size: 0.82rem; font-family: inherit; cursor: pointer; transition: opacity 0.15s; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary   { background: #3a7bfd; color: #fff; }
+    .btn-secondary { background: #2a2a2a; color: #ccc; }
+    .btn-danger    { background: #3a0a0a; color: #e05555; }
+    button:not(:disabled):hover { opacity: 0.85; }
+    input, select { background: #111; border: 1px solid #333; border-radius: 6px; color: #e0e0e0; font-size: 0.82rem; font-family: inherit; padding: 9px 12px; width: 100%; }
+    input:focus, select:focus { outline: none; border-color: #3a7bfd; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 0.72rem; color: #666; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .divider { border: none; border-top: 1px solid #1e1e1e; margin: 16px 0; }
+    .note { font-size: 0.7rem; color: #444; margin-top: 8px; }
+    a { color: #3a7bfd; text-decoration: none; }
+
+    /* Header bar */
+    .admin-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+
+    /* Gas grid */
+    .gas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    .gas-card { background: #0d0d0d; border: 1px solid #222; border-radius: 6px; padding: 14px; }
+    .gas-net  { font-size: 0.7rem; color: #555; margin-bottom: 6px; }
+    .gas-val  { font-size: 1rem; font-weight: bold; margin-bottom: 8px; }
+    .gas-thr  { font-size: 0.68rem; color: #444; }
+
+    /* Wallets table */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 0.76rem; }
+    .data-table th { text-align: left; color: #555; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; padding: 0 0 10px 0; border-bottom: 1px solid #222; }
+    .data-table td { padding: 8px 0; border-bottom: 1px solid #1a1a1a; color: #bbb; vertical-align: middle; }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table td:first-child { color: #666; font-size: 0.7rem; }
+    .addr { font-size: 0.72rem; color: #7ee8a2; }
+    .mono { font-family: 'SF Mono', monospace; }
+
+    /* Log tables */
+    .log-wrap { max-height: 320px; overflow-y: auto; margin-top: 8px; }
+    .log-table { width: 100%; border-collapse: collapse; font-size: 0.72rem; }
+    .log-table th { position: sticky; top: 0; background: #161616; text-align: left; color: #555; font-size: 0.65rem; text-transform: uppercase; padding: 0 8px 8px 0; border-bottom: 1px solid #222; }
+    .log-table td { padding: 6px 8px 6px 0; border-bottom: 1px solid #1a1a1a; color: #999; vertical-align: top; word-break: break-all; }
+    .log-table tr:last-child td { border-bottom: none; }
+    .st-ok      { color: #7ee8a2; }
+    .st-fail    { color: #e05555; }
+    .st-pending { color: #f5a623; }
+
+    /* Login */
+    #login-screen { display: flex; justify-content: center; align-items: flex-start; padding-top: 80px; }
+    .login-box { width: 100%; max-width: 380px; }
+    .login-box h1 { margin-bottom: 6px; }
+    .login-error { font-size: 0.76rem; color: #e05555; min-height: 20px; margin-top: 8px; }
+
+    /* Network checkboxes */
+    .net-checks { display: flex; gap: 12px; flex-wrap: wrap; }
+    .net-check  { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: #ccc; cursor: pointer; }
+    .net-check input { width: auto; accent-color: #3a7bfd; }
+
+    /* Feedback msg */
+    .feedback { font-size: 0.76rem; min-height: 22px; margin-top: 8px; }
+    .feedback.ok  { color: #7ee8a2; }
+    .feedback.err { color: #e05555; }
+
+    /* Stuck deliveries */
+    .stuck-card { background: #1a0f0f; border: 1px solid #4a1a1a; border-radius: 8px; padding: 16px; margin-bottom: 10px; }
+    .stuck-card:last-child { margin-bottom: 0; }
+    .stuck-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 12px; }
+    .stuck-field { font-size: 0.7rem; }
+    .stuck-field .sf-label { color: #555; text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 2px; }
+    .stuck-field .sf-val   { color: #bbb; word-break: break-all; }
+    .stuck-field .sf-val.hi  { color: #f5a623; font-weight: bold; }
+    .stuck-reason { font-size: 0.7rem; color: #884444; background: #120606; border-radius: 4px; padding: 6px 10px; margin-bottom: 12px; word-break: break-all; }
+    .stuck-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .stuck-actions button { padding: 7px 16px; font-size: 0.78rem; }
+    .btn-resolve { background: #1a2e1a; color: #7ee8a2; border: 1px solid #2a4a2a; }
+    .btn-refund  { background: #2e1a1a; color: #e07070; border: 1px solid #4a2a2a; }
+    .stuck-result { font-size: 0.72rem; margin-top: 8px; min-height: 18px; }
+    .stuck-result.ok  { color: #7ee8a2; }
+    .stuck-result.err { color: #e05555; }
+    .stuck-empty { font-size: 0.8rem; color: #7ee8a2; padding: 12px 0; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: #111; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <h1>EQI Admin</h1>
+    <p class="subtitle">MetaNetwork MVP · operator panel</p>
+    <div class="card">
+      <h2>Login</h2>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="pw-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
+      </div>
+      <button class="btn-primary" onclick="login()" id="login-btn">Login</button>
+      <div class="login-error" id="login-error"></div>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" hidden>
+
+  <div class="admin-header">
+    <div>
+      <h1>EQI Admin — MetaNetwork MVP</h1>
+      <p class="subtitle">operator panel · session active</p>
+      <div style="margin-top:10px;font-size:0.72rem;line-height:2;color:#555;display:grid;grid-template-columns:max-content 1fr;gap:0 16px">
+        <span>A (Ethereum Sepolia)</span><span style="color:#888;user-select:all">0xDB9180f50AFB6eAcB671DD173B86bC5437844ed2</span>
+        <span>B (BNB Testnet)</span><span style="color:#888;user-select:all">0xF17eEbb229E8F767bBCA6C39E19f527165b9cdE1</span>
+        <span>C (Polygon Amoy)</span><span style="color:#888;user-select:all">0x894d8842305d6E0c83903c6Da77cC281BEF73760</span>
+        <span>D (Arbitrum Sepolia)</span><span style="color:#888;user-select:all">0xF3250962637144FFEd4d3e2165dc76D19c43bC1c</span>
+      </div>
+    </div>
+    <button class="btn-secondary" onclick="logout()">Logout</button>
+  </div>
+
+  <!-- 1. Gas -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 style="margin-bottom:0">Gas Balances</h2>
+      <button class="btn-secondary" onclick="loadGas()" style="padding:6px 14px;font-size:0.75rem">Refresh</button>
+    </div>
+    <div class="gas-grid" id="gas-grid">
+      <div class="gas-card"><div class="gas-net">Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- 2. MetaRegistry State -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h2 style="margin-bottom:0">MetaRegistry State</h2>
+      <button class="btn-secondary" onclick="loadState()" style="padding:6px 14px;font-size:0.75rem">Refresh</button>
+    </div>
+    <div class="row" style="margin-bottom:14px">
+      <span class="label">Status</span><span id="mr-status">—</span>
+      <span class="label" style="margin-left:16px">Events</span><span class="value" id="mr-events">—</span>
+    </div>
+    <div class="gas-grid" id="mr-grid">
+      <div class="gas-card"><div class="gas-net">Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- 2b. Cabinets -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 style="margin-bottom:0">Кабінети <span id="cab-count" style="color:#444;font-size:0.7rem"></span></h2>
+      <button class="btn-secondary" onclick="loadCabinets()" style="padding:6px 14px;font-size:0.75rem">Refresh</button>
+    </div>
+    <!-- Create form -->
+    <div class="form-row" style="margin-bottom:8px">
+      <div class="form-group" style="margin-bottom:0">
+        <label>Початковий баланс (кратний 4)</label>
+        <input type="number" id="cab-amount" min="4" step="4" placeholder="напр. 1000">
+      </div>
+      <div class="form-group" style="margin-bottom:0;display:flex;align-items:flex-end">
+        <button class="btn-primary" onclick="createCabinet()" style="width:auto;padding:9px 20px">Створити кабінет</button>
+      </div>
+    </div>
+    <div class="feedback" id="cab-feedback"></div>
+    <div id="cab-created" hidden style="background:#0a1a0a;border:1px solid #1a3a1a;border-radius:6px;padding:14px;margin-top:12px;font-size:0.76rem">
+      <div style="color:#7ee8a2;margin-bottom:8px;font-weight:bold">Кабінет створено</div>
+      <div style="margin-bottom:6px"><span style="color:#555;min-width:110px;display:inline-block">ID:</span><span class="mono value" id="cab-new-id" style="word-break:break-all"></span></div>
+      <div><span style="color:#555;min-width:110px;display:inline-block">access_token:</span><span class="mono value hi" id="cab-new-token" style="word-break:break-all"></span></div>
+    </div>
+    <hr class="divider">
+    <!-- Cabinet list -->
+    <div id="cab-wrap"><p class="value dim">Loading…</p></div>
+  </div>
+
+  <!-- 3. Wallets -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 style="margin-bottom:0">Registered Wallets</h2>
+      <button class="btn-secondary" onclick="loadWallets()" style="padding:6px 14px;font-size:0.75rem">Refresh</button>
+    </div>
+    <div id="wallets-wrap">
+      <p class="value dim">Loading…</p>
+    </div>
+  </div>
+
+  <!-- 3. Register Wallet -->
+  <div class="card">
+    <h2>Register Wallet</h2>
+    <div class="form-group">
+      <label>Address</label>
+      <input type="text" id="reg-address" placeholder="0x...">
+    </div>
+    <div class="form-group">
+      <label>Networks</label>
+      <div class="net-checks">
+        <label class="net-check"><input type="checkbox" id="reg-A" value="A" checked> A — Sepolia</label>
+        <label class="net-check"><input type="checkbox" id="reg-B" value="B" checked> B — BNB</label>
+        <label class="net-check"><input type="checkbox" id="reg-C" value="C" checked> C — Amoy</label>
+        <label class="net-check"><input type="checkbox" id="reg-D" value="D" checked> D — Arbitrum</label>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="registerWallet()">Register</button>
+    <div class="feedback" id="reg-feedback"></div>
+  </div>
+
+  <!-- 4. Distribute tEQUI -->
+  <div class="card">
+    <h2>Distribute tEQUI</h2>
+    <div class="form-row-3">
+      <div class="form-group">
+        <label>Network</label>
+        <select id="dist-network">
+          <option value="A">A — Ethereum Sepolia</option>
+          <option value="B">B — BNB Testnet</option>
+          <option value="C">C — Polygon Amoy</option>
+          <option value="D">D — Arbitrum Sepolia</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Amount (tEQUI)</label>
+        <input type="number" id="dist-amount" min="1" step="1" placeholder="e.g. 1000">
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label>Recipient Address</label>
+        <input type="text" id="dist-address" placeholder="0x...">
+      </div>
+    </div>
+    <button class="btn-primary" onclick="distribute()" id="dist-btn">Send tEQUI</button>
+    <div class="feedback" id="dist-feedback"></div>
+  </div>
+
+  <!-- 5. Event Log -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 style="margin-bottom:0">Event Log <span id="evt-count" style="color:#444;font-size:0.7rem"></span></h2>
+      <button class="btn-secondary" onclick="loadLogs()" style="padding:6px 14px;font-size:0.75rem">Refresh</button>
+    </div>
+    <div class="log-wrap">
+      <table class="log-table">
+        <thead>
+          <tr>
+            <th style="min-width:110px">Event ID</th>
+            <th style="min-width:80px">Type</th>
+            <th style="min-width:30px">Net</th>
+            <th style="min-width:60px">Amount</th>
+            <th style="min-width:60px">Status</th>
+            <th style="min-width:140px">To</th>
+            <th style="min-width:90px">Time</th>
+          </tr>
+        </thead>
+        <tbody id="evt-body"><tr><td colspan="7" style="color:#444">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 5b. Unprocessed Entries (wallet→IT-EOA without /entry) -->
+  <div class="card" style="border-color:#3a2a0a">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 style="margin-bottom:0;color:#c8922a">Непроведені входи <span id="unproc-count" style="color:#555;font-size:0.7rem"></span></h2>
+      <button class="btn-secondary" onclick="loadUnprocessed()" style="padding:6px 14px;font-size:0.75rem">Refresh</button>
+    </div>
+    <p class="note" style="margin-bottom:12px;color:#555">On-chain переходи wallet→IT-EOA, виявлені Observer-ом, для яких <code>/entry</code> не було зафіксовано. Якщо рядок тут — /entry або не був викликаний, або виклик загубився.</p>
+    <div id="unproc-wrap">
+      <p class="value dim">Loading…</p>
+    </div>
+  </div>
+
+  <!-- 5c. Register Manual Delivery -->
+  <div class="card" style="border-color:#2a2a3a">
+    <h2>Зареєструвати вхід вручну</h2>
+    <p class="note" style="margin-bottom:14px;color:#555">Створює STUCK-рядок в execution_log, який з'явиться в "Застряглі доставки" для ручного завершення або повернення.</p>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Tx Hash (джерело)</label>
+        <input type="text" id="msd-txhash" placeholder="0x...">
+      </div>
+      <div class="form-group">
+        <label>Сума (tEQUI)</label>
+        <input type="number" id="msd-amount" min="1" step="1" placeholder="500">
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:4px">
+      <div class="form-group">
+        <label>Мережа-джерело</label>
+        <select id="msd-src">
+          <option value="A">A — Sepolia</option>
+          <option value="B">B — BNB</option>
+          <option value="C">C — Amoy</option>
+          <option value="D">D — Arbitrum</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Мережа-ціль</label>
+        <select id="msd-dst">
+          <option value="A">A — Sepolia</option>
+          <option value="B">B — BNB</option>
+          <option value="C">C — Amoy</option>
+          <option value="D" selected>D — Arbitrum</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:4px">
+      <div class="form-group">
+        <label>Відправник (from, мережа-джерело)</label>
+        <input type="text" id="msd-from" placeholder="0x...">
+      </div>
+      <div class="form-group">
+        <label>Отримувач (to, мережа-ціль)</label>
+        <input type="text" id="msd-to" placeholder="0x...">
+      </div>
+    </div>
+    <button class="btn-secondary" onclick="createManualStuck()" style="margin-top:4px">Зареєструвати як STUCK</button>
+    <div class="feedback" id="msd-feedback"></div>
+  </div>
+
+  <!-- 6. Stuck Deliveries -->
+  <div class="card" style="border-color:#3a1a1a">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 style="margin-bottom:0;color:#cc6666">Застряглі доставки <span id="stuck-count" style="color:#555;font-size:0.7rem"></span></h2>
+      <button class="btn-secondary" onclick="loadStuckDeliveries()" style="padding:6px 14px;font-size:0.75rem">Refresh</button>
+    </div>
+    <div id="stuck-deliveries-wrap">
+      <p class="value dim">Loading…</p>
+    </div>
+  </div>
+
+  <!-- 7. Multi-source envelopes -->
+  <div class="card" style="border-color:#1a2a3a">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 style="margin-bottom:0;color:#6688cc">Мультиджерельні операції <span id="mse-count" style="color:#555;font-size:0.7rem"></span></h2>
+      <button class="btn-secondary" onclick="loadMultiEnvelopes()" style="padding:6px 14px;font-size:0.75rem">Refresh</button>
+    </div>
+    <div id="mse-wrap">
+      <p class="value dim">Loading…</p>
+    </div>
+  </div>
+
+  <!-- 8. Execution Log -->
+  <div class="card">
+    <h2>Execution Log <span id="exec-count" style="color:#444;font-size:0.7rem"></span></h2>
+    <div class="log-wrap">
+      <table class="log-table">
+        <thead>
+          <tr>
+            <th style="min-width:80px">Net</th>
+            <th style="min-width:60px">Amount</th>
+            <th style="min-width:60px">Status</th>
+            <th style="min-width:140px">To</th>
+            <th style="min-width:150px">Error</th>
+            <th style="min-width:90px">Time</th>
+          </tr>
+        </thead>
+        <tbody id="exec-body"><tr><td colspan="6" style="color:#444">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /dashboard -->
+
+<script>
+'use strict';
+
+let adminToken = sessionStorage.getItem('adminToken');
+
+// ── API ───────────────────────────────────────────────────────────────────────
+
+async function api(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (adminToken) headers['Authorization'] = 'Bearer ' + adminToken;
+  try {
+    const res  = await fetch(path, { ...opts, headers });
+    const data = await res.json();
+    return { status: res.status, data };
+  } catch (e) {
+    return { status: 0, data: { ok: false, reason: e.message } };
+  }
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+
+async function checkAuth() {
+  if (!adminToken) return showLogin();
+  const { status } = await api('/admin/wallets');
+  if (status === 401) { clearToken(); return showLogin(); }
+  showDashboard();
+  loadAll();
+}
+
+async function login() {
+  const pw  = document.getElementById('pw-input').value;
+  const btn = document.getElementById('login-btn');
+  const err = document.getElementById('login-error');
+  err.textContent = '';
+  if (!pw) { err.textContent = 'Enter password'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Logging in…';
+  const { status, data } = await api('/admin/auth', {
+    method: 'POST',
+    body:   JSON.stringify({ password: pw }),
+  });
+  btn.disabled = false;
+  btn.textContent = 'Login';
+  if (status === 200 && data.token) {
+    adminToken = data.token;
+    sessionStorage.setItem('adminToken', adminToken);
+    document.getElementById('pw-input').value = '';
+    showDashboard();
+    loadAll();
+  } else {
+    err.textContent = data.reason || 'Login failed';
+  }
+}
+
+async function logout() {
+  await api('/admin/logout', { method: 'POST' });
+  clearToken();
+  showLogin();
+}
+
+function clearToken() {
+  adminToken = null;
+  sessionStorage.removeItem('adminToken');
+}
+
+function showLogin() {
+  document.getElementById('login-screen').hidden = false;
+  document.getElementById('dashboard').hidden = true;
+}
+
+function showDashboard() {
+  document.getElementById('login-screen').hidden = true;
+  document.getElementById('dashboard').hidden = false;
+}
+
+// ── Load all ──────────────────────────────────────────────────────────────────
+
+function loadAll() {
+  loadGas();
+  loadState();
+  loadCabinets();
+  loadWallets();
+  loadUnprocessed();
+  loadStuckDeliveries();
+  loadMultiEnvelopes();
+  loadLogs();
+}
+
+// ── MetaRegistry State ────────────────────────────────────────────────────────
+
+const NET_NAMES = { A: 'Ethereum Sepolia', B: 'BNB Testnet', C: 'Polygon Amoy', D: 'Arbitrum Sepolia' };
+
+async function loadState() {
+  const [stateResp, cabResp] = await Promise.all([
+    api('/state'),
+    api('/admin/cabinets'),
+  ]);
+  const { data }    = stateResp;
+  const cabData     = cabResp.data;
+  const mrStatus    = document.getElementById('mr-status');
+  const mrEvents    = document.getElementById('mr-events');
+  const grid        = document.getElementById('mr-grid');
+
+  if (!data || !data.ok) {
+    mrStatus.innerHTML = '<span class="badge err">N/A</span>';
+    mrEvents.textContent = '—';
+    grid.innerHTML = '<div class="gas-card"><div class="gas-net" style="color:#555">Not initialized</div></div>';
+    return;
+  }
+
+  const s = data.state;
+  const isActive = s.status === 'ACTIVE';
+  mrStatus.innerHTML = `<span class="badge ${isActive ? 'ok' : 'err'}">${s.status}</span>`;
+  mrEvents.textContent = s.event_count ?? '—';
+
+  const reserved = (cabData && cabData.ok && cabData.reserved_totals)
+    ? cabData.reserved_totals
+    : { A: 0, B: 0, C: 0, D: 0 };
+
+  const nets = ['A', 'B', 'C', 'D'];
+  grid.innerHTML = nets.map(nid => {
+    const n = (s.networks || {})[nid];
+    if (!n) return `<div class="gas-card"><div class="gas-net">${nid} — ${NET_NAMES[nid]}</div><div class="value dim">no data</div></div>`;
+    const total = (n.IT_ACTIVE || 0) + (n.IT_FROZEN || 0) + (n.wallet_active_total || 0) + (n.UNAVAILABLE || 0);
+    const res  = reserved[nid] || 0;
+    const free = Math.max(0, (n.IT_ACTIVE || 0) - res);
+    return `<div class="gas-card">
+      <div class="gas-net">${nid} — ${NET_NAMES[nid]}</div>
+      <div style="font-size:0.74rem;line-height:2;margin-top:4px">
+        <div><span style="color:#555;min-width:90px;display:inline-block">IT_ACTIVE</span>  <span class="value hi">${(n.IT_ACTIVE||0).toLocaleString()}</span></div>
+        <div style="padding-left:8px"><span style="color:#3a4a3a;min-width:82px;display:inline-block">↳ вільно</span>   <span class="value" style="color:#4cbb7a">${free.toLocaleString()}</span></div>
+        <div style="padding-left:8px"><span style="color:#4a3a1a;min-width:82px;display:inline-block">↳ резерв</span>   <span class="value ${res > 0 ? 'warn' : 'dim'}">${res.toLocaleString()}</span></div>
+        <div><span style="color:#555;min-width:90px;display:inline-block">Wallets</span>    <span class="value">${(n.wallet_active_total||0).toLocaleString()}</span></div>
+        <div><span style="color:#555;min-width:90px;display:inline-block">IT_FROZEN</span>  <span class="value" style="color:#3a7bfd">${(n.IT_FROZEN||0).toLocaleString()}</span></div>
+        <div><span style="color:#555;min-width:90px;display:inline-block">UNAVAIL</span>    <span class="value ${n.UNAVAILABLE > 0 ? 'warn' : 'dim'}">${(n.UNAVAILABLE||0).toLocaleString()}</span></div>
+        <div style="border-top:1px solid #222;margin-top:6px;padding-top:6px"><span style="color:#555;min-width:90px;display:inline-block">Total</span> <span class="value" style="color:#666">${total.toLocaleString()}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Gas ───────────────────────────────────────────────────────────────────────
+
+async function loadGas() {
+  const { data } = await api('/health/gas');
+  const grid = document.getElementById('gas-grid');
+  if (!data || !data.networks) {
+    grid.innerHTML = '<div class="gas-card"><div class="gas-net" style="color:#e05555">Error loading gas</div></div>';
+    return;
+  }
+  grid.innerHTML = data.networks.map(n => {
+    let badgeCls, badgeTxt;
+    if (n.status === 'ERROR' || n.balance === null) {
+      badgeCls = 'err'; badgeTxt = 'ERR';
+    } else if (n.balance < n.threshold) {
+      badgeCls = 'err'; badgeTxt = 'CRITICAL';
+    } else if (n.balance < n.threshold * 2) {
+      badgeCls = 'warn'; badgeTxt = 'LOW';
+    } else {
+      badgeCls = 'ok'; badgeTxt = 'OK';
+    }
+    const valCls = badgeCls === 'ok' ? 'hi' : badgeCls === 'warn' ? 'warn' : 'err';
+    const balStr = n.balance !== null ? n.balance.toFixed(4) + ' ' + n.symbol : 'N/A';
+    return `<div class="gas-card">
+      <div class="gas-net">${n.network_id} — ${n.network}</div>
+      <div class="gas-val value ${valCls}">${balStr}</div>
+      <div class="gas-thr">threshold: ${n.threshold} ${n.symbol} &nbsp; <span class="badge ${badgeCls}">${badgeTxt}</span></div>
+    </div>`;
+  }).join('');
+}
+
+// ── Wallets ───────────────────────────────────────────────────────────────────
+
+async function loadWallets() {
+  const { data } = await api('/admin/wallets');
+  const wrap = document.getElementById('wallets-wrap');
+  if (!data || !data.wallets) {
+    wrap.innerHTML = '<p class="value err">Error loading wallets</p>'; return;
+  }
+  if (data.wallets.length === 0) {
+    wrap.innerHTML = '<p class="value dim">No registered wallets</p>'; return;
+  }
+
+  // Group by address
+  const byAddr = {};
+  for (const r of data.wallets) {
+    const a = r.address.toLowerCase();
+    if (!byAddr[a]) byAddr[a] = {};
+    byAddr[a][r.network_id] = r;
+  }
+
+  const nets = ['A', 'B', 'C', 'D'];
+  const rows = Object.entries(byAddr).map(([addr, nets_data]) => {
+    const netCells = nets.map(n => {
+      const w = nets_data[n];
+      if (!w) return '<td style="color:#333">—</td>';
+      const bal = w.active_balance;
+      const cls = bal > 0 ? 'hi' : 'dim';
+      return `<td><span class="value ${cls}">${bal.toLocaleString()}</span></td>`;
+    }).join('');
+    const shortAddr = addr.slice(0, 6) + '…' + addr.slice(-4);
+    return `<tr>
+      <td><span class="addr" title="${addr}">${shortAddr}</span></td>
+      <td style="font-size:0.68rem;color:#444">${(Object.values(nets_data)[0]?.wallet_type || '')}</td>
+      ${netCells}
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `<table class="data-table">
+    <thead><tr>
+      <th>Address</th><th>Type</th>
+      <th>A</th><th>B</th><th>C</th><th>D</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+// ── Unprocessed entries ───────────────────────────────────────────────────────
+
+async function loadUnprocessed() {
+  const { data } = await api('/admin/unprocessed-entries');
+  const wrap  = document.getElementById('unproc-wrap');
+  const badge = document.getElementById('unproc-count');
+
+  if (!data || !data.unprocessed) {
+    wrap.innerHTML = '<p class="value err">Error loading</p>';
+    badge.textContent = '';
+    return;
+  }
+
+  const list = data.unprocessed;
+  badge.textContent = list.length > 0 ? `(${list.length})` : '';
+
+  if (list.length === 0) {
+    wrap.innerHTML = '<p style="font-size:0.78rem;color:#7ee8a2;padding:8px 0">✓ Немає непроведених входів</p>';
+    return;
+  }
+
+  const rows = list.map(r => {
+    const shortTx   = r.tx_hash.slice(0, 14) + '…';
+    const shortFrom = r.from_address.slice(0, 10) + '…';
+    return `<tr>
+      <td style="color:#f5a623" title="${r.tx_hash}">${shortTx}</td>
+      <td style="color:#888">${r.network_id}</td>
+      <td style="color:#ccc;font-weight:bold">${r.amount.toLocaleString()}</td>
+      <td class="mono" style="font-size:0.68rem;color:#7ee8a2" title="${r.from_address}">${shortFrom}</td>
+      <td style="color:#555">${r.block_number}</td>
+      <td style="color:#444">${fmtTime(r.detected_at)}</td>
+      <td>
+        <button style="padding:3px 10px;font-size:0.7rem;background:#2e2200;color:#f5a623;border:1px solid #4a3800;border-radius:4px"
+          onclick="prefillManual('${r.tx_hash}','${r.from_address}',${r.amount},'${r.network_id}')">
+          → Зареєструвати
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `<div class="log-wrap" style="max-height:240px"><table class="log-table">
+    <thead><tr>
+      <th>Tx Hash</th><th>Мережа</th><th>Сума</th><th>Від</th><th>Блок</th><th>Виявлено</th><th></th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function prefillManual(txHash, fromAddr, amount, srcNet) {
+  document.getElementById('msd-txhash').value = txHash;
+  document.getElementById('msd-from').value   = fromAddr;
+  document.getElementById('msd-to').value     = fromAddr;
+  document.getElementById('msd-amount').value  = amount;
+  document.getElementById('msd-src').value    = srcNet;
+  document.getElementById('msd-feedback').textContent = '';
+  document.getElementById('msd-feedback').className   = 'feedback';
+  document.getElementById('msd-txhash').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+async function createManualStuck() {
+  const fb = document.getElementById('msd-feedback');
+  fb.className = 'feedback';
+  fb.textContent = '';
+
+  const txHash = document.getElementById('msd-txhash').value.trim();
+  const src    = document.getElementById('msd-src').value;
+  const dst    = document.getElementById('msd-dst').value;
+  const from   = document.getElementById('msd-from').value.trim();
+  const to     = document.getElementById('msd-to').value.trim();
+  const amount = document.getElementById('msd-amount').value;
+
+  if (!txHash || !from || !to || !amount) {
+    fb.textContent = 'Заповніть всі поля';
+    fb.className = 'feedback err';
+    return;
+  }
+
+  const { status, data } = await api('/admin/create-stuck-delivery', {
+    method: 'POST',
+    body:   JSON.stringify({ tx_hash: txHash, source_network: src, target_network: dst,
+                             from_address: from, to_address: to, amount: parseInt(amount, 10) }),
+  });
+
+  if (status === 200 && data.ok) {
+    fb.textContent = '✓ STUCK-рядок створено. Перегляньте "Застряглі доставки".';
+    fb.className = 'feedback ok';
+    document.getElementById('msd-txhash').value = '';
+    loadStuckDeliveries();
+  } else {
+    fb.textContent = data.reason || 'Помилка';
+    fb.className = 'feedback err';
+  }
+}
+
+// ── Stuck deliveries ──────────────────────────────────────────────────────────
+
+const NET_LABELS = { A: 'Sepolia', B: 'BNB', C: 'Amoy', D: 'Arbitrum' };
+
+async function loadStuckDeliveries() {
+  const { data } = await api('/admin/stuck-deliveries');
+  const wrap  = document.getElementById('stuck-deliveries-wrap');
+  const badge = document.getElementById('stuck-count');
+
+  if (!data || !data.stuck_deliveries) {
+    wrap.innerHTML = '<p class="value err">Error loading stuck deliveries</p>';
+    badge.textContent = '';
+    return;
+  }
+
+  const list = data.stuck_deliveries;
+  badge.textContent = list.length > 0 ? `(${list.length})` : '';
+
+  if (list.length === 0) {
+    wrap.innerHTML = '<div class="stuck-empty">✓ Немає застряглих доставок</div>';
+    return;
+  }
+
+  wrap.innerHTML = list.map((row, i) => {
+    const txHash  = row.command_id.replace('entry:', '');
+    const srcNet  = row.source_network || '?';
+    const dstNet  = row.network_id || '?';
+    const srcLabel = NET_LABELS[srcNet] || srcNet;
+    const dstLabel = NET_LABELS[dstNet] || dstNet;
+    const shortTo   = row.to_address   ? row.to_address.slice(0,10)   + '…' : '—';
+    const shortFrom = row.from_address  ? row.from_address.slice(0,10) + '…' : '—';
+    const shortTx   = txHash.slice(0, 14) + '…';
+    const reason    = row.error_reason || '—';
+    const time      = fmtTime(row.created_at);
+
+    return `<div class="stuck-card" id="stuck-${i}">
+      <div class="stuck-meta">
+        <div class="stuck-field">
+          <span class="sf-label">tx</span>
+          <span class="sf-val" title="${txHash}">${shortTx}</span>
+        </div>
+        <div class="stuck-field">
+          <span class="sf-label">Джерело</span>
+          <span class="sf-val hi">${srcNet} — ${srcLabel}</span>
+        </div>
+        <div class="stuck-field">
+          <span class="sf-label">Ціль</span>
+          <span class="sf-val hi">${dstNet} — ${dstLabel}</span>
+        </div>
+        <div class="stuck-field">
+          <span class="sf-label">Сума</span>
+          <span class="sf-val" style="color:#ccc;font-weight:bold">${row.amount != null ? row.amount.toLocaleString() : '—'} tEQUI</span>
+        </div>
+        <div class="stuck-field">
+          <span class="sf-label">Отримувач (ціль)</span>
+          <span class="sf-val" title="${row.to_address || ''}">${shortTo}</span>
+        </div>
+        <div class="stuck-field">
+          <span class="sf-label">Відправник (джерело)</span>
+          <span class="sf-val" title="${row.from_address || ''}">${shortFrom}</span>
+        </div>
+        <div class="stuck-field">
+          <span class="sf-label">Час</span>
+          <span class="sf-val" style="color:#555">${time}</span>
+        </div>
+      </div>
+      <div class="stuck-reason" title="${reason}">${reason.length > 120 ? reason.slice(0, 120) + '…' : reason}</div>
+      <div class="stuck-actions">
+        <button class="btn-resolve" id="btn-resolve-${i}" onclick="retryStuck('${txHash}', ${i})">
+          ▶ Завершити доставку
+        </button>
+        <button class="btn-refund" id="btn-refund-${i}" onclick="refundStuck('${txHash}', ${i})">
+          ↩ Повернути кошти
+        </button>
+      </div>
+      <div class="stuck-result" id="stuck-result-${i}"></div>
+    </div>`;
+  }).join('');
+}
+
+async function retryStuck(txHash, idx) {
+  const btnResolve = document.getElementById('btn-resolve-' + idx);
+  const btnRefund  = document.getElementById('btn-refund-'  + idx);
+  const result     = document.getElementById('stuck-result-' + idx);
+  btnResolve.disabled = true;
+  btnRefund.disabled  = true;
+  btnResolve.textContent = 'Надсилаємо…';
+  result.className = 'stuck-result';
+  result.textContent = '';
+
+  const { status, data } = await api('/admin/retry-delivery/' + txHash, { method: 'POST' });
+
+  if (status === 200 && data.ok) {
+    result.className = 'stuck-result ok';
+    result.textContent = '✓ Доставлено. tx: ' + (data.tx_hash || '').slice(0, 18) + '…';
+    // Remove card after short delay — operation resolved
+    setTimeout(() => loadStuckDeliveries(), 1800);
+  } else {
+    result.className = 'stuck-result err';
+    result.textContent = '✗ ' + (data.reason || 'Помилка') + (data.detail ? ' — ' + JSON.stringify(data.detail).slice(0, 80) : '');
+    btnResolve.disabled = false;
+    btnRefund.disabled  = false;
+    btnResolve.textContent = '▶ Завершити доставку';
+  }
+}
+
+async function refundStuck(txHash, idx) {
+  const btnResolve = document.getElementById('btn-resolve-' + idx);
+  const btnRefund  = document.getElementById('btn-refund-'  + idx);
+  const result     = document.getElementById('stuck-result-' + idx);
+  btnResolve.disabled = true;
+  btnRefund.disabled  = true;
+  btnRefund.textContent = 'Повертаємо…';
+  result.className = 'stuck-result';
+  result.textContent = '';
+
+  const { status, data } = await api('/admin/refund-delivery/' + txHash, { method: 'POST' });
+
+  if (status === 200 && data.ok) {
+    result.className = 'stuck-result ok';
+    result.textContent = '✓ Повернуто. tx: ' + (data.refund_tx_hash || '').slice(0, 18) + '…';
+    setTimeout(() => loadStuckDeliveries(), 1800);
+  } else {
+    result.className = 'stuck-result err';
+    result.textContent = '✗ ' + (data.reason || 'Помилка');
+    btnResolve.disabled = false;
+    btnRefund.disabled  = false;
+    btnRefund.textContent = '↩ Повернути кошти';
+  }
+}
+
+// ── Multi-source envelopes ────────────────────────────────────────────────────
+
+async function loadMultiEnvelopes() {
+  const { data } = await api('/admin/multi-envelopes');
+  const wrap  = document.getElementById('mse-wrap');
+  const badge = document.getElementById('mse-count');
+
+  if (!data || !data.envelopes) {
+    wrap.innerHTML = '<p class="value err">Error loading MSE</p>';
+    badge.textContent = '';
+    return;
+  }
+
+  const list = data.envelopes;
+  badge.textContent = list.length > 0 ? `(${list.length})` : '';
+
+  if (list.length === 0) {
+    wrap.innerHTML = '<div class="stuck-empty">✓ Немає активних мультиджерельних операцій</div>';
+    return;
+  }
+
+  const nowTs = Math.floor(Date.now() / 1000);
+  wrap.innerHTML = list.map((env, i) => {
+    const statusBadge = {
+      COLLECTING: '<span class="badge warn">COLLECTING</span>',
+      TIMEOUT:    '<span class="badge err">TIMEOUT</span>',
+      FAILED:     '<span class="badge err">FAILED</span>',
+      DELIVERING: '<span class="badge ok">DELIVERING…</span>',
+    }[env.status] || `<span class="badge">${env.status}</span>`;
+
+    const srcNets = env.sources.map(s => s.source_network).join('+');
+    const timeInfo = env.timeout_at
+      ? (env.status === 'COLLECTING'
+        ? `<span style="color:#f5a623">Залишилось: ${Math.max(0, env.timeout_at - nowTs)}с</span>`
+        : `Таймаут: ${fmtTime(env.timeout_at)}`)
+      : (env.status === 'COLLECTING' ? '<span style="color:#555">Таймер не стартував</span>' : '—');
+
+    const sourcesHtml = env.sources.map(s => {
+      const statusCol = s.status === 'CONFIRMED' ? '#7ee8a2' : s.status === 'REFUNDED' ? '#555' : '#888';
+      const shortTx   = s.tx_hash ? s.tx_hash.slice(0, 12) + '…' : '—';
+      const refundBtn = s.status === 'CONFIRMED'
+        ? `<button class="btn-secondary" style="padding:3px 8px;font-size:0.68rem" onclick="mseRefundSource('${env.envelope_id}','${s.source_network}',${i})">↩ Повернути</button>`
+        : '';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:4px 0;border-bottom:1px solid #1a1a1a">
+        <span style="color:#555;min-width:18px;font-size:0.72rem">${s.source_network}</span>
+        <span style="color:${statusCol};font-size:0.72rem;min-width:68px">${s.status}</span>
+        <span style="color:#888;font-size:0.72rem;min-width:80px">${s.actual_amount != null ? s.actual_amount : s.expected_amount} tEQUI</span>
+        <span style="color:#444;font-size:0.68rem" title="${s.tx_hash || ''}">${shortTx}</span>
+        ${refundBtn}
+      </div>`;
+    }).join('');
+
+    const allConfirmed = env.sources.every(s => s.status === 'CONFIRMED');
+    const hasConfirmed = env.sources.some(s => s.status === 'CONFIRMED');
+    const canDeliver   = ['FAILED', 'TIMEOUT'].includes(env.status) && allConfirmed;
+
+    const actionsHtml = (['FAILED', 'TIMEOUT'].includes(env.status)) ? `
+      <div class="stuck-actions" style="margin-top:8px">
+        ${canDeliver ? `<button class="btn-resolve" id="mse-deliver-${i}" onclick="mseDeploy('${env.envelope_id}',${i})">▶ Завершити доставку</button>` : ''}
+        ${hasConfirmed ? `<button class="btn-refund" id="mse-refundall-${i}" onclick="mseRefundAll('${env.envelope_id}',${i})">↩ Повернути всі зібрані</button>` : ''}
+      </div>` : '';
+
+    return `<div class="stuck-card" id="mse-card-${i}">
+      <div class="stuck-meta">
+        <div class="stuck-field"><span class="sf-label">ID</span><span class="sf-val" style="color:#666;font-size:0.68rem" title="${env.envelope_id}">${env.envelope_id.slice(-16)}</span></div>
+        <div class="stuck-field"><span class="sf-label">Статус</span>${statusBadge}</div>
+        <div class="stuck-field"><span class="sf-label">Маршрут</span><span class="sf-val hi">${srcNets} → ${env.target_network}</span></div>
+        <div class="stuck-field"><span class="sf-label">Разом</span><span class="sf-val" style="color:#ccc;font-weight:bold">${env.total_amount.toLocaleString()} tEQUI</span></div>
+        <div class="stuck-field"><span class="sf-label">Прогрес</span><span class="sf-val">${env.confirmed_count} / ${env.source_count} джерел</span></div>
+        <div class="stuck-field"><span class="sf-label">Таймер</span><span class="sf-val">${timeInfo}</span></div>
+        <div class="stuck-field"><span class="sf-label">Отримувач</span><span class="sf-val" title="${env.recipient}">${env.recipient.slice(0, 12)}…</span></div>
+      </div>
+      ${env.error_reason ? `<div class="stuck-reason">${env.error_reason.slice(0, 150)}</div>` : ''}
+      <div style="margin:8px 0">${sourcesHtml}</div>
+      ${actionsHtml}
+      <div class="stuck-result" id="mse-result-${i}"></div>
+    </div>`;
+  }).join('');
+}
+
+async function mseDeploy(envelopeId, idx) {
+  const btn    = document.getElementById('mse-deliver-' + idx);
+  const result = document.getElementById('mse-result-' + idx);
+  if (btn) { btn.disabled = true; btn.textContent = 'Надсилаємо…'; }
+  result.className = 'stuck-result'; result.textContent = '';
+
+  const { status, data } = await api('/admin/multi-envelopes/' + envelopeId + '/deliver', { method: 'POST' });
+
+  if (status === 200 && data.ok) {
+    result.className = 'stuck-result ok';
+    result.textContent = '✓ Доставлено. tx: ' + (data.tx_hash || '').slice(0, 18) + '…';
+    setTimeout(() => loadMultiEnvelopes(), 1800);
+  } else {
+    result.className = 'stuck-result err';
+    result.textContent = '✗ ' + (data.reason || 'Помилка');
+    if (btn) { btn.disabled = false; btn.textContent = '▶ Завершити доставку'; }
+  }
+}
+
+async function mseRefundSource(envelopeId, net, idx) {
+  const result = document.getElementById('mse-result-' + idx);
+  result.className = 'stuck-result'; result.textContent = `Повертаємо ${net}…`;
+
+  const { status, data } = await api('/admin/multi-envelopes/' + envelopeId + '/refund/' + net, { method: 'POST' });
+
+  if (status === 200 && data.ok) {
+    result.className = 'stuck-result ok';
+    result.textContent = `✓ ${net} повернуто. tx: ${(data.tx_hash || '').slice(0, 18)}…`;
+    setTimeout(() => loadMultiEnvelopes(), 1800);
+  } else {
+    result.className = 'stuck-result err';
+    result.textContent = `✗ ${net}: ${data.reason || 'Помилка'}`;
+  }
+}
+
+async function mseRefundAll(envelopeId, idx) {
+  const btn    = document.getElementById('mse-refundall-' + idx);
+  const result = document.getElementById('mse-result-' + idx);
+  if (btn) { btn.disabled = true; btn.textContent = 'Повертаємо всі…'; }
+  result.className = 'stuck-result'; result.textContent = '';
+
+  const { status, data } = await api('/admin/multi-envelopes/' + envelopeId + '/refund-all', { method: 'POST' });
+
+  if (status === 200) {
+    result.className = 'stuck-result ' + (data.ok ? 'ok' : 'warn');
+    result.textContent = (data.ok ? '✓ ' : '⚠ ') + `${data.success}/${data.total} повернуто.`;
+    if (data.results) {
+      result.textContent += ' ' + data.results.map(r => r.source_network + ':' + (r.ok ? '✓' : '✗')).join(' ');
+    }
+    setTimeout(() => loadMultiEnvelopes(), 1800);
+  } else {
+    result.className = 'stuck-result err';
+    result.textContent = '✗ ' + (data.reason || 'Помилка');
+    if (btn) { btn.disabled = false; btn.textContent = '↩ Повернути всі зібрані'; }
+  }
+}
+
+// ── Register wallet ───────────────────────────────────────────────────────────
+
+async function registerWallet() {
+  const fb   = document.getElementById('reg-feedback');
+  const addr = document.getElementById('reg-address').value.trim();
+  const nets = ['A','B','C','D'].filter(n => document.getElementById('reg-'+n).checked);
+  fb.className = 'feedback';
+  if (!addr) { fb.textContent = 'Enter address'; fb.className = 'feedback err'; return; }
+  if (nets.length === 0) { fb.textContent = 'Select at least one network'; fb.className = 'feedback err'; return; }
+
+  const { status, data } = await api('/admin/register-wallet', {
+    method: 'POST',
+    body:   JSON.stringify({ address: addr, network_ids: nets }),
+  });
+  if (status === 200) {
+    fb.textContent = 'Registered on: ' + nets.join(', ');
+    fb.className = 'feedback ok';
+    document.getElementById('reg-address').value = '';
+    loadWallets();
+  } else {
+    fb.textContent = data.reason || 'Error';
+    fb.className = 'feedback err';
+  }
+}
+
+// ── Distribute ────────────────────────────────────────────────────────────────
+
+async function distribute() {
+  const fb   = document.getElementById('dist-feedback');
+  const btn  = document.getElementById('dist-btn');
+  const net  = document.getElementById('dist-network').value;
+  const addr = document.getElementById('dist-address').value.trim();
+  const amt  = parseInt(document.getElementById('dist-amount').value, 10);
+  fb.className = 'feedback';
+  if (!addr) { fb.textContent = 'Enter address'; fb.className = 'feedback err'; return; }
+  if (!amt || amt <= 0) { fb.textContent = 'Enter valid amount'; fb.className = 'feedback err'; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  fb.textContent = '';
+
+  const { status, data } = await api('/treasury/distribute', {
+    method: 'POST',
+    body:   JSON.stringify({ network_id: net, wallet_address: addr, amount: amt }),
+  });
+  btn.disabled = false;
+  btn.textContent = 'Send tEQUI';
+
+  if (status === 200) {
+    fb.textContent = `✓ Sent ${amt} tEQUI · tx: ${data.tx_hash?.slice(0,12)}…`;
+    fb.className = 'feedback ok';
+    loadWallets();
+    loadLogs();
+  } else {
+    fb.textContent = data.reason || 'Error';
+    fb.className = 'feedback err';
+  }
+}
+
+// ── Logs ──────────────────────────────────────────────────────────────────────
+
+function fmtTime(ts) {
+  if (!ts) return '—';
+  return new Date(ts * 1000).toISOString().replace('T', ' ').slice(0, 19);
+}
+
+function shortHash(h) {
+  if (!h) return '—';
+  return h.slice(0, 8) + '…';
+}
+
+async function loadLogs() {
+  const { data } = await api('/admin/logs?limit=50');
+  if (!data) return;
+
+  // Event log
+  const evtBody = document.getElementById('evt-body');
+  document.getElementById('evt-count').textContent = data.events ? `(${data.events.length})` : '';
+  if (data.events && data.events.length > 0) {
+    evtBody.innerHTML = data.events.map(e => {
+      const stCls = e.status === 'SUCCESS' ? 'st-ok' : e.status === 'FAILED' ? 'st-fail' : 'st-pending';
+      return `<tr>
+        <td class="mono" style="font-size:0.68rem">${shortHash(e.event_id)}</td>
+        <td style="color:#bbb">${e.event_type}</td>
+        <td style="color:#666">${e.network_id || '—'}</td>
+        <td style="color:#ccc">${e.amount != null ? e.amount.toLocaleString() : '—'}</td>
+        <td class="${stCls}">${e.status}</td>
+        <td class="mono" style="font-size:0.68rem;color:#666">${e.to_address ? e.to_address.slice(0,8)+'…' : '—'}</td>
+        <td style="color:#444">${fmtTime(e.created_at)}</td>
+      </tr>`;
+    }).join('');
+  } else {
+    evtBody.innerHTML = '<tr><td colspan="7" style="color:#444">No events</td></tr>';
+  }
+
+  // Execution log
+  const execBody = document.getElementById('exec-body');
+  document.getElementById('exec-count').textContent = data.executions ? `(${data.executions.length})` : '';
+  if (data.executions && data.executions.length > 0) {
+    execBody.innerHTML = data.executions.map(e => {
+      const stCls = e.status === 'COMPLETED' ? 'st-ok' : e.status === 'FAILED' ? 'st-fail' : 'st-pending';
+      const errShort = e.error_reason ? e.error_reason.slice(0, 60) + (e.error_reason.length > 60 ? '…' : '') : '—';
+      return `<tr>
+        <td style="color:#888">${e.network_id}</td>
+        <td style="color:#ccc">${e.amount != null ? e.amount.toLocaleString() : '—'}</td>
+        <td class="${stCls}">${e.status}</td>
+        <td class="mono" style="font-size:0.68rem;color:#666">${e.to_address ? e.to_address.slice(0,8)+'…' : '—'}</td>
+        <td style="color:#555;font-size:0.68rem" title="${e.error_reason || ''}">${errShort}</td>
+        <td style="color:#444">${fmtTime(e.created_at)}</td>
+      </tr>`;
+    }).join('');
+  } else {
+    execBody.innerHTML = '<tr><td colspan="6" style="color:#444">No executions</td></tr>';
+  }
+}
+
+// ── Cabinets ──────────────────────────────────────────────────────────────────
+
+async function loadCabinets() {
+  const { data } = await api('/admin/cabinets');
+  const wrap = document.getElementById('cab-wrap');
+  const cnt  = document.getElementById('cab-count');
+  if (!data || !data.ok) {
+    wrap.innerHTML = '<p class="value err">Помилка завантаження кабінетів</p>'; return;
+  }
+  cnt.textContent = data.count > 0 ? `(${data.count})` : '';
+  if (data.count === 0) {
+    wrap.innerHTML = '<p class="value dim">Кабінетів ще немає</p>'; return;
+  }
+  const rt = data.reserved_totals;
+  wrap.innerHTML = `
+    <div class="log-wrap" style="max-height:280px">
+    <table class="data-table">
+      <thead><tr>
+        <th>Cabinet ID</th>
+        <th style="min-width:70px">Баланс</th>
+        <th>Резерв A</th><th>Резерв B</th><th>Резерв C</th><th>Резерв D</th>
+        <th style="min-width:130px">Створено</th>
+        <th></th>
+      </tr></thead>
+      <tbody>
+        ${data.cabinets.map(c => `<tr>
+          <td class="mono" style="color:#7ee8a2;font-size:0.7rem">${escHtml(c.cabinet_id)}</td>
+          <td><span class="value hi">${c.total_balance.toLocaleString()}</span></td>
+          <td class="value">${c.reserved_A.toLocaleString()}</td>
+          <td class="value">${c.reserved_B.toLocaleString()}</td>
+          <td class="value">${c.reserved_C.toLocaleString()}</td>
+          <td class="value">${c.reserved_D.toLocaleString()}</td>
+          <td style="color:#555;font-size:0.7rem">${fmtTime(c.created_at)}</td>
+          <td><button class="btn-secondary" onclick="showCabinetToken('${escHtml(c.cabinet_id)}')" style="padding:4px 10px;font-size:0.7rem;width:auto">Токен</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>
+    <div class="note" style="margin-top:8px">
+      Всього зарезервовано: A=${rt.A} · B=${rt.B} · C=${rt.C} · D=${rt.D}
+    </div>
+    <div id="cab-token-reveal" hidden style="margin-top:12px;background:#0a0a0a;border:1px solid #222;border-radius:6px;padding:12px;font-size:0.76rem">
+      <span style="color:#555">access_token: </span><span class="mono value hi" id="cab-token-val" style="word-break:break-all"></span>
+    </div>`;
+}
+
+async function createCabinet() {
+  const fb     = document.getElementById('cab-feedback');
+  const amtStr = document.getElementById('cab-amount').value;
+  const amt    = parseInt(amtStr, 10);
+  fb.textContent = ''; fb.className = 'feedback';
+  document.getElementById('cab-created').hidden = true;
+
+  if (!amtStr || !Number.isInteger(amt) || amt <= 0) {
+    fb.textContent = 'Введіть суму.'; fb.className = 'feedback err'; return;
+  }
+
+  const { status, data } = await api('/admin/cabinets/create', {
+    method: 'POST',
+    body:   JSON.stringify({ initial_amount: amt }),
+  });
+
+  if (!data || !data.ok) {
+    let msg = (data && data.reason) || 'Помилка створення';
+    if (data && data.insufficient) {
+      msg += ': ' + data.insufficient
+        .map(x => `${x.network} (вільно: ${x.free.toLocaleString()}, потрібно: ${x.required.toLocaleString()})`)
+        .join(', ');
+    }
+    fb.textContent = msg; fb.className = 'feedback err'; return;
+  }
+
+  document.getElementById('cab-new-id').textContent    = data.cabinet_id;
+  document.getElementById('cab-new-token').textContent = data.access_token;
+  document.getElementById('cab-created').hidden = false;
+  document.getElementById('cab-amount').value = '';
+
+  await Promise.all([loadCabinets(), loadState()]);
+}
+
+async function showCabinetToken(cabinet_id) {
+  const { data } = await api('/admin/cabinets/' + encodeURIComponent(cabinet_id) + '/token');
+  if (!data || !data.ok) {
+    alert('Помилка: ' + (data && data.reason || 'unknown')); return;
+  }
+  const reveal = document.getElementById('cab-token-reveal');
+  document.getElementById('cab-token-val').textContent = data.access_token;
+  if (reveal) reveal.hidden = false;
+}
+
+// ── Utility ───────────────────────────────────────────────────────────────────
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+checkAuth();
+</script>
+</body>
+</html>

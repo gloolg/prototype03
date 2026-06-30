@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Кабінет — MetaNetwork EQI</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'SF Mono', 'Fira Code', monospace; background: #0d0d0d; color: #e0e0e0; min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; }
+    .container { width: 100%; max-width: 480px; }
+    h1 { font-size: 1.1rem; color: #fff; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .subtitle { font-size: 0.72rem; color: #444; margin-bottom: 32px; }
+    .card { background: #161616; border: 1px solid #2a2a2a; border-radius: 8px; padding: 24px; margin-bottom: 16px; }
+    .card h2 { font-size: 0.78rem; color: #666; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 20px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 0.7rem; color: #555; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 7px; }
+    input, select { width: 100%; background: #111; border: 1px solid #2a2a2a; border-radius: 6px; color: #e0e0e0; font-size: 0.82rem; font-family: inherit; padding: 10px 12px; }
+    input:focus, select:focus { outline: none; border-color: #3a7bfd; }
+    button { width: 100%; padding: 11px 20px; border: none; border-radius: 6px; font-size: 0.82rem; font-family: inherit; cursor: pointer; transition: opacity 0.15s; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary   { background: #3a7bfd; color: #fff; }
+    .btn-secondary { background: #1e1e1e; color: #888; border: 1px solid #2a2a2a; margin-top: 10px; }
+    button:not(:disabled):hover { opacity: 0.85; }
+    .balance-display { text-align: center; padding: 24px 0 20px; }
+    .balance-number { font-size: 2.6rem; color: #7ee8a2; font-weight: bold; letter-spacing: -0.02em; line-height: 1; }
+    .balance-unit   { font-size: 0.8rem; color: #444; margin-top: 6px; }
+    .divider { border: none; border-top: 1px solid #1e1e1e; margin: 20px 0; }
+    .note { font-size: 0.7rem; color: #444; margin-top: 8px; line-height: 1.6; }
+    .status-box { background: #0a0a0a; border: 1px solid #1e1e1e; border-radius: 6px; padding: 16px; font-size: 0.78rem; }
+    .status-line { padding: 4px 0; display: flex; align-items: flex-start; gap: 10px; }
+    .status-label { color: #555; min-width: 24px; }
+    .status-text  { color: #ccc; word-break: break-all; }
+    .status-text.ok   { color: #7ee8a2; }
+    .status-text.err  { color: #e05555; }
+    .status-text.wait { color: #f5a623; }
+    .error-box { background: #1a0808; border: 1px solid #3a1010; border-radius: 6px; padding: 12px 16px; font-size: 0.78rem; color: #e05555; margin-top: 12px; line-height: 1.6; display: none; }
+    .logout-link { font-size: 0.7rem; color: #333; cursor: pointer; text-align: right; display: block; margin-bottom: 16px; }
+    .logout-link:hover { color: #555; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Кабінет — MetaNetwork EQI</h1>
+  <p class="subtitle">внутрішній баланс · виведення tEQUI · без MetaMask</p>
+
+  <!-- LOGIN SCREEN -->
+  <div id="screen-login">
+    <div class="card">
+      <h2>Вхід</h2>
+      <div class="form-group">
+        <label>Токен доступу</label>
+        <input type="password" id="inp-token" placeholder="Введіть токен доступу" autocomplete="off">
+      </div>
+      <button class="btn-primary" onclick="doLogin()">Увійти</button>
+      <div class="error-box" id="login-error"></div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD SCREEN -->
+  <div id="screen-dashboard" hidden>
+    <span class="logout-link" onclick="doLogout()">вийти →</span>
+
+    <!-- Balance -->
+    <div class="card">
+      <h2>Ваш баланс tEQUI</h2>
+      <div class="balance-display">
+        <div class="balance-number" id="dash-balance">—</div>
+        <div class="balance-unit">tEQUI</div>
+      </div>
+    </div>
+
+    <!-- Withdrawal form -->
+    <div class="card">
+      <h2>Вивести tEQUI</h2>
+      <div class="form-group">
+        <label>Адреса отримувача</label>
+        <input type="text" id="f-recipient" placeholder="0x..." oninput="onFormChange()">
+      </div>
+      <div class="form-group">
+        <label>Мережа доставки</label>
+        <select id="f-network" onchange="onFormChange()">
+          <option value="">— оберіть мережу —</option>
+          <option value="A">A — Ethereum Sepolia</option>
+          <option value="B">B — BNB Smart Chain Testnet</option>
+          <option value="C">C — Polygon PoS Amoy</option>
+          <option value="D">D — Arbitrum Sepolia</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Сума (ціле число tEQUI)</label>
+        <input type="number" id="f-amount" min="1" step="1" placeholder="напр. 500" oninput="onFormChange()">
+      </div>
+      <button class="btn-primary" id="btn-withdraw" onclick="doWithdraw()" disabled>Вивести</button>
+      <div class="error-box" id="withdraw-error"></div>
+      <p class="note" id="withdraw-note" hidden></p>
+    </div>
+
+    <!-- Status -->
+    <div class="card" id="status-card" hidden>
+      <h2>Статус виведення</h2>
+      <div class="status-box" id="status-box"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API = '';
+  let _token = sessionStorage.getItem('cabinet_token') || null;
+
+  const NET_NAMES = { A: 'Ethereum Sepolia', B: 'BNB Testnet', C: 'Polygon Amoy', D: 'Arbitrum Sepolia' };
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  (function init() {
+    if (_token) {
+      showDashboard();
+    }
+  })();
+
+  // ── Login ─────────────────────────────────────────────────────────────────
+  async function doLogin() {
+    const token = document.getElementById('inp-token').value.trim();
+    if (!token) return showLoginError('Введіть токен доступу.');
+
+    hideLoginError();
+    try {
+      const res  = await fetch(`${API}/cabinet/auth`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ access_token: token }),
+      });
+      const data = await res.json();
+      if (!data.ok) return showLoginError(data.reason || 'Помилка входу.');
+      _token = data.token;
+      sessionStorage.setItem('cabinet_token', _token);
+      showDashboard();
+    } catch (e) {
+      showLoginError('Не вдалось зв\'язатись з сервером.');
+    }
+  }
+
+  // Enter key on token input
+  document.getElementById('inp-token').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+
+  // ── Dashboard ─────────────────────────────────────────────────────────────
+  async function showDashboard() {
+    document.getElementById('screen-login').hidden     = true;
+    document.getElementById('screen-dashboard').hidden = false;
+    await loadBalance();
+  }
+
+  async function loadBalance() {
+    try {
+      const res  = await authFetch('/cabinet/balance');
+      const data = await res.json();
+      if (res.status === 401) { doLogout(); return; }
+      if (!data.ok) { document.getElementById('dash-balance').textContent = '—'; return; }
+      document.getElementById('dash-balance').textContent = data.total_balance;
+    } catch (_) {
+      document.getElementById('dash-balance').textContent = '—';
+    }
+  }
+
+  function doLogout() {
+    sessionStorage.removeItem('cabinet_token');
+    _token = null;
+    document.getElementById('screen-dashboard').hidden = true;
+    document.getElementById('screen-login').hidden     = false;
+    document.getElementById('inp-token').value = '';
+    document.getElementById('status-card').hidden = true;
+    hideWithdrawError();
+  }
+
+  // ── Form validation ───────────────────────────────────────────────────────
+  function onFormChange() {
+    const recipient = document.getElementById('f-recipient').value.trim();
+    const network   = document.getElementById('f-network').value;
+    const amount    = parseInt(document.getElementById('f-amount').value, 10);
+    const valid =
+      /^0x[0-9a-fA-F]{40}$/.test(recipient) &&
+      ['A','B','C','D'].includes(network) &&
+      Number.isInteger(amount) && amount > 0;
+    document.getElementById('btn-withdraw').disabled = !valid;
+  }
+
+  // ── Withdraw ──────────────────────────────────────────────────────────────
+  async function doWithdraw() {
+    hideWithdrawError();
+    document.getElementById('status-card').hidden = true;
+
+    const recipient      = document.getElementById('f-recipient').value.trim();
+    const target_network = document.getElementById('f-network').value;
+    const amount         = parseInt(document.getElementById('f-amount').value, 10);
+
+    document.getElementById('btn-withdraw').disabled = true;
+    setStatus([{ label: '…', text: 'Надсилаємо запит…', cls: 'wait' }]);
+    document.getElementById('status-card').hidden = false;
+
+    try {
+      const res  = await authFetch('/cabinet/withdraw', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ recipient, target_network, amount }),
+      });
+      const data = await res.json();
+
+      if (res.status === 401) { doLogout(); return; }
+
+      if (!data.ok) {
+        showWithdrawError(data.reason + (data.available !== undefined
+          ? ` (доступно: ${data.available} tEQUI)`
+          : ''));
+        document.getElementById('status-card').hidden = true;
+        document.getElementById('btn-withdraw').disabled = false;
+        return;
+      }
+
+      // Show per-step results
+      const lines = data.steps.map(s => ({
+        label: s.network_id,
+        text:  s.ok
+          ? `${s.amount} tEQUI → ${NET_NAMES[s.network_id]} · tx: ${s.tx_hash}`
+          : `ПОМИЛКА (${s.reason})`,
+        cls: s.ok ? 'ok' : 'err',
+      }));
+      setStatus(lines);
+
+      // Refresh balance
+      await loadBalance();
+
+      // Note on deduction order if multiple steps
+      if (data.steps.length > 1) {
+        const note = document.getElementById('withdraw-note');
+        note.textContent =
+          'Кошти списані з кількох мереж: спочатку з обраної, потім за порядком A→B→C→D.';
+        note.hidden = false;
+      }
+    } catch (e) {
+      showWithdrawError('Не вдалось зв\'язатись з сервером.');
+      document.getElementById('status-card').hidden = true;
+    } finally {
+      onFormChange(); // re-enable button based on form state
+    }
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function authFetch(path, opts = {}) {
+    return fetch(`${API}${path}`, {
+      ...opts,
+      headers: { ...(opts.headers || {}), 'Authorization': `Bearer ${_token}` },
+    });
+  }
+
+  function setStatus(lines) {
+    document.getElementById('status-box').innerHTML = lines.map(l =>
+      `<div class="status-line">
+        <span class="status-label">${escHtml(l.label)}</span>
+        <span class="status-text ${l.cls || ''}">${escHtml(l.text)}</span>
+      </div>`
+    ).join('');
+  }
+
+  function showLoginError(msg) {
+    const el = document.getElementById('login-error');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function hideLoginError() {
+    document.getElementById('login-error').style.display = 'none';
+  }
+  function showWithdrawError(msg) {
+    const el = document.getElementById('withdraw-error');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function hideWithdrawError() {
+    const el = document.getElementById('withdraw-error');
+    el.style.display = 'none';
+    document.getElementById('withdraw-note').hidden = true;
+  }
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+</script>
+</body>
+</html>

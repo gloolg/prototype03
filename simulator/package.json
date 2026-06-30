@@ -1,0 +1,10 @@
+{
+  "name": "metanetwork-simulator",
+  "version": "1.0.0",
+  "description": "MetaNetwork tEQUI simulator — pure in-memory state machine",
+  "main": "src/simulator.js",
+  "scripts": {
+    "test": "node tests/testMatrix.js"
+  },
+  "private": true
+}

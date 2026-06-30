@@ -1,0 +1,25 @@
+# Environment — never commit secrets
+.env
+*.env
+
+# SQLite databases
+*.sqlite
+*.db
+db/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Build artifacts
+dist/
+build/
+
+# GCP credentials
+*credentials*.json
+*service-account*.json
+
+# OS
+.DS_Store
+Thumbs.db

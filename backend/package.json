@@ -1,0 +1,20 @@
+{
+  "name": "metaregistry-backend",
+  "version": "0.1.0",
+  "description": "MetaRegistry MVP Backend — MetaNetwork EQI",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "12.10.0",
+    "dotenv": "17.4.2",
+    "ethers": "^6.16.0",
+    "express": "5.2.1"
+  }
+}

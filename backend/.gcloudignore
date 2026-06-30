@@ -1,0 +1,9 @@
+.gcloudignore
+.git
+.gitignore
+node_modules/
+db/
+.env
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal

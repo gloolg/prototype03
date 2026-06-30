@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MetaNetwork EQI — Live Transparency</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #0b0f1a;
+      color: #d0d6e8;
+      min-height: 100vh;
+      padding: 24px 16px 48px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: .03em;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      font-size: .85rem;
+      color: #6b7a99;
+      margin-bottom: 28px;
+    }
+
+    /* ── Status badge ── */
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: .82rem;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+    .badge.ok        { background: rgba(34,197,94,.15); color: #22c55e; border: 1px solid rgba(34,197,94,.3); }
+    .badge.stopped   { background: rgba(239,68,68,.15);  color: #ef4444; border: 1px solid rgba(239,68,68,.3); }
+    .badge.violation { background: rgba(234,179,8,.15);  color: #eab308; border: 1px solid rgba(234,179,8,.3); }
+    .badge.loading   { background: rgba(100,116,139,.15); color: #94a3b8; border: 1px solid rgba(100,116,139,.3); }
+
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .dot.ok        { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+    .dot.stopped   { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+    .dot.violation { background: #eab308; box-shadow: 0 0 6px #eab308; }
+    .dot.loading   { background: #94a3b8; }
+
+    .refresh-info {
+      font-size: .78rem;
+      color: #475569;
+      margin-left: auto;
+    }
+
+    /* ── Section headers ── */
+    .section-label {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: #4a5568;
+      margin-bottom: 10px;
+      margin-top: 28px;
+    }
+
+    /* ── Global counters ── */
+    .counters {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+
+    .counter-card {
+      background: #141929;
+      border: 1px solid #1e2a45;
+      border-radius: 10px;
+      padding: 16px 18px;
+    }
+
+    .counter-label {
+      font-size: .72rem;
+      color: #5a6780;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 6px;
+    }
+
+    .counter-value {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .counter-value.highlight { color: #60a5fa; }
+    .counter-value.frozen    { color: #a78bfa; }
+    .counter-value.danger    { color: #f87171; }
+
+    /* ── Per-network grid ── */
+    .network-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .net-card {
+      background: #141929;
+      border: 1px solid #1e2a45;
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+
+    .net-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .net-id {
+      font-size: .65rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      color: #fff;
+      background: #1e3a5f;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .net-name {
+      font-size: .75rem;
+      color: #5a6780;
+    }
+
+    .net-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: .8rem;
+      padding: 3px 0;
+    }
+
+    .net-row-label { color: #5a6780; }
+    .net-row-value { font-weight: 600; color: #c7d2e8; font-variant-numeric: tabular-nums; }
+    .net-row-value.zero { color: #374151; }
+
+    .net-divider {
+      height: 1px;
+      background: #1e2a45;
+      margin: 8px 0;
+    }
+
+    /* ── Operations table ── */
+    .ops-table-wrap {
+      overflow-x: auto;
+      border-radius: 10px;
+      border: 1px solid #1e2a45;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .78rem;
+    }
+
+    thead th {
+      background: #141929;
+      color: #4a5568;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      padding: 10px 14px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-top: 1px solid #1a2135;
+    }
+
+    tbody tr:nth-child(odd) { background: #0d1120; }
+    tbody tr:nth-child(even) { background: #0f1525; }
+
+    tbody td {
+      padding: 9px 14px;
+      color: #9aa5bf;
+      white-space: nowrap;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 4px;
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+    }
+
+    .tag.GENESIS         { background: rgba(59,130,246,.2); color: #60a5fa; }
+    .tag.TREASURY        { background: rgba(139,92,246,.2); color: #a78bfa; }
+    .tag.CROSS_NETWORK   { background: rgba(20,184,166,.2); color: #2dd4bf; }
+    .tag.OBSERVATION     { background: rgba(234,179,8,.2);  color: #fbbf24; }
+    .tag.FREEZE          { background: rgba(239,68,68,.2);  color: #f87171; }
+    .tag.UNFREEZE        { background: rgba(34,197,94,.2);  color: #4ade80; }
+    .tag.STOP            { background: rgba(239,68,68,.3);  color: #ef4444; }
+    .tag.default         { background: rgba(100,116,139,.2); color: #94a3b8; }
+
+    .addr {
+      font-family: monospace;
+      font-size: .76rem;
+      color: #6b7a99;
+    }
+
+    /* ── Error / loading ── */
+    .msg-box {
+      text-align: center;
+      padding: 40px 20px;
+      color: #4a5568;
+      font-size: .9rem;
+    }
+
+    .error-box {
+      background: rgba(239,68,68,.08);
+      border: 1px solid rgba(239,68,68,.2);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: #f87171;
+      font-size: .82rem;
+      margin-bottom: 16px;
+    }
+
+    .stop-reason-box {
+      background: rgba(239,68,68,.1);
+      border: 1px solid rgba(239,68,68,.25);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: #fca5a5;
+      font-size: .82rem;
+      margin-bottom: 16px;
+    }
+
+    @media (max-width: 480px) {
+      .counters { grid-template-columns: 1fr 1fr; }
+      .counter-value { font-size: 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<h1>MetaNetwork EQI</h1>
+<p class="subtitle">Live Transparency Dashboard — MetaRegistry MVP</p>
+
+<div class="status-row">
+  <span class="badge loading" id="status-badge">
+    <span class="dot loading" id="status-dot"></span>
+    <span id="status-text">Connecting…</span>
+  </span>
+  <span class="refresh-info" id="refresh-info">—</span>
+</div>
+
+<div id="stop-reason-box" class="stop-reason-box" style="display:none;"></div>
+<div id="error-box" class="error-box" style="display:none;"></div>
+
+<!-- Global counters -->
+<div class="section-label">Global State</div>
+<div class="counters" id="counters">
+  <div class="counter-card"><div class="counter-label">Total Minted</div><div class="counter-value" id="c-minted">—</div></div>
+  <div class="counter-card"><div class="counter-label">A_ACTIVE (Invariant)</div><div class="counter-value highlight" id="c-active">—</div></div>
+  <div class="counter-card"><div class="counter-label">Total Frozen</div><div class="counter-value frozen" id="c-frozen">—</div></div>
+  <div class="counter-card"><div class="counter-label">UNAVAILABLE</div><div class="counter-value" id="c-unavail">—</div></div>
+</div>
+
+<!-- Per-network -->
+<div class="section-label">Per-Network Breakdown</div>
+<div class="network-grid" id="network-grid">
+  <div class="msg-box">Loading…</div>
+</div>
+
+<!-- Recent operations -->
+<div class="section-label">Recent Operations</div>
+<div class="ops-table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Type</th>
+        <th>Network</th>
+        <th>Amount</th>
+        <th>From</th>
+        <th>To</th>
+      </tr>
+    </thead>
+    <tbody id="ops-body">
+      <tr><td colspan="6" class="msg-box">Loading…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+  // ── CONFIG ─────────────────────────────────────────────────────────────────
+  // Replace with the public URL of your deployed backend.
+  // Local dev: 'http://localhost:3000'
+  const API_URL = 'REPLACE_WITH_BACKEND_URL';
+
+  const REFRESH_INTERVAL_MS = 30_000; // 30 seconds
+
+  const NET_NAMES = {
+    A: 'Ethereum Sepolia',
+    B: 'BNB Smart Chain Testnet',
+    C: 'Polygon PoS Amoy',
+    D: 'Arbitrum Sepolia',
+  };
+
+  const OP_LIMIT = 20;
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function shortAddr(addr) {
+    if (!addr || addr.length < 10) return addr || '—';
+    return addr.slice(0, 6) + '…' + addr.slice(-4);
+  }
+
+  function fmtNum(n) {
+    if (n === undefined || n === null) return '—';
+    return Number(n).toLocaleString();
+  }
+
+  function fmtTime(ts) {
+    if (!ts) return '—';
+    const d = new Date(ts);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  function tagClass(event_type) {
+    if (!event_type) return 'default';
+    const t = event_type.toUpperCase();
+    if (t.includes('GENESIS'))   return 'GENESIS';
+    if (t.includes('TREASURY'))  return 'TREASURY';
+    if (t.includes('CROSS') || t.includes('TRANSFER') || t.includes('ENTRY') || t.includes('EXIT')) return 'CROSS_NETWORK';
+    if (t.includes('OBSERVATION')) return 'OBSERVATION';
+    if (t.includes('FREEZE'))    return 'FREEZE';
+    if (t.includes('UNFREEZE'))  return 'UNFREEZE';
+    if (t.includes('STOP'))      return 'STOP';
+    return 'default';
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  function renderStatus(snap) {
+    const gs = snap.global_state;
+    const badge   = document.getElementById('status-badge');
+    const dot     = document.getElementById('status-dot');
+    const text    = document.getElementById('status-text');
+    const errBox  = document.getElementById('error-box');
+    const stopBox = document.getElementById('stop-reason-box');
+
+    errBox.style.display = 'none';
+
+    const sysStatus = (gs.system_status || '').toUpperCase();
+    const invStatus = gs.invariant_status;
+
+    if (sysStatus === 'STOPPED') {
+      badge.className = 'badge stopped';
+      dot.className   = 'dot stopped';
+      text.textContent = 'STOPPED';
+      if (gs.stop_reason) {
+        stopBox.style.display = '';
+        stopBox.textContent = 'Stop reason: ' + gs.stop_reason;
+      }
+    } else if (invStatus === 'violation') {
+      badge.className = 'badge violation';
+      dot.className   = 'dot violation';
+      text.textContent = 'INVARIANT VIOLATION';
+      stopBox.style.display = 'none';
+    } else {
+      badge.className = 'badge ok';
+      dot.className   = 'dot ok';
+      text.textContent = 'ACTIVE';
+      stopBox.style.display = 'none';
+    }
+  }
+
+  function renderCounters(snap) {
+    const gs = snap.global_state;
+    document.getElementById('c-minted').textContent  = fmtNum(gs.TOTAL_MINTED);
+    document.getElementById('c-active').textContent  = fmtNum(gs.A_ACTIVE);
+    document.getElementById('c-frozen').textContent  = fmtNum(gs.TOTAL_FROZEN);
+
+    const unavail = gs.UNAVAILABLE_TOTAL || 0;
+    const uvEl = document.getElementById('c-unavail');
+    uvEl.textContent = fmtNum(unavail);
+    uvEl.className = 'counter-value' + (unavail > 0 ? ' danger' : '');
+  }
+
+  function renderNetworks(snap) {
+    const grid = document.getElementById('network-grid');
+    const nets = snap.per_network || {};
+    const order = ['A', 'B', 'C', 'D'];
+
+    let html = '';
+    for (const net_id of order) {
+      const n = nets[net_id];
+      if (!n) continue;
+      const unavailClass = (n.UNAVAILABLE || 0) > 0 ? 'danger' : 'zero';
+      html += `
+        <div class="net-card">
+          <div class="net-header">
+            <span class="net-id">Network ${net_id}</span>
+            <span class="net-name">${NET_NAMES[net_id] || n.network_name || ''}</span>
+          </div>
+          <div class="net-row"><span class="net-row-label">Wallet Active</span><span class="net-row-value">${fmtNum(n.wallet_active_total)}</span></div>
+          <div class="net-row"><span class="net-row-label">IT Active</span><span class="net-row-value">${fmtNum(n.IT_ACTIVE)}</span></div>
+          <div class="net-divider"></div>
+          <div class="net-row"><span class="net-row-label">IT Frozen</span><span class="net-row-value frozen">${fmtNum(n.IT_FROZEN)}</span></div>
+          <div class="net-row"><span class="net-row-label">UNAVAILABLE</span><span class="net-row-value ${unavailClass}">${fmtNum(n.UNAVAILABLE)}</span></div>
+          <div class="net-divider"></div>
+          <div class="net-row"><span class="net-row-label">Network Total</span><span class="net-row-value">${fmtNum(n.network_total)}</span></div>
+        </div>`;
+    }
+    grid.innerHTML = html || '<div class="msg-box">No network data.</div>';
+  }
+
+  function renderOps(snap) {
+    const ops  = (snap.latest_operations || []).slice().reverse().slice(0, OP_LIMIT);
+    const tbody = document.getElementById('ops-body');
+
+    if (!ops.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="msg-box">No operations yet.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = ops.map(op => {
+      const tc = tagClass(op.event_type);
+      const t  = op.created_at
+        ? (op.created_at > 1e12 ? fmtTime(op.created_at) : fmtTime(op.created_at * 1000))
+        : '—';
+      return `<tr>
+        <td>${t}</td>
+        <td><span class="tag ${tc}">${op.event_type || '—'}</span></td>
+        <td>${op.network_id || '—'}</td>
+        <td>${op.amount !== undefined && op.amount !== null ? fmtNum(op.amount) + ' tEQUI' : '—'}</td>
+        <td class="addr">${shortAddr(op.from_address)}</td>
+        <td class="addr">${shortAddr(op.to_address)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Fetch & refresh ────────────────────────────────────────────────────────
+  let lastUpdated = null;
+  let countdown   = REFRESH_INTERVAL_MS / 1000;
+  let timer       = null;
+
+  async function fetchAndRender() {
+    clearInterval(timer);
+    const errBox = document.getElementById('error-box');
+    const info   = document.getElementById('refresh-info');
+    info.textContent = 'Refreshing…';
+
+    try {
+      if (!API_URL || API_URL === 'REPLACE_WITH_BACKEND_URL') {
+        errBox.style.display = '';
+        errBox.textContent   = 'API_URL not configured. Edit the script and set the backend URL.';
+        return;
+      }
+
+      const r = await fetch(`${API_URL}/transparency?limit=${OP_LIMIT}`, { cache: 'no-store' });
+      if (!r.ok) {
+        const body = await r.text().catch(() => '');
+        throw new Error(`HTTP ${r.status}: ${body.slice(0, 100)}`);
+      }
+
+      const json = await r.json();
+      if (!json.ok || !json.snapshot) throw new Error('Backend returned ok=false');
+
+      errBox.style.display = 'none';
+      const snap = json.snapshot;
+      renderStatus(snap);
+      renderCounters(snap);
+      renderNetworks(snap);
+      renderOps(snap);
+
+      lastUpdated = new Date();
+    } catch (err) {
+      errBox.style.display = '';
+      errBox.textContent   = 'Could not fetch data: ' + err.message;
+      console.error('[transparency]', err);
+    } finally {
+      countdown = REFRESH_INTERVAL_MS / 1000;
+      scheduleCountdown();
+    }
+  }
+
+  function scheduleCountdown() {
+    const info = document.getElementById('refresh-info');
+    timer = setInterval(() => {
+      countdown--;
+      const ts = lastUpdated ? lastUpdated.toLocaleTimeString() : '—';
+      if (countdown <= 0) {
+        clearInterval(timer);
+        fetchAndRender();
+      } else {
+        info.textContent = `Last updated ${ts} · Refresh in ${countdown}s`;
+      }
+    }, 1000);
+    // initial display
+    const ts = lastUpdated ? lastUpdated.toLocaleTimeString() : '—';
+    info.textContent = `Last updated ${ts} · Refresh in ${countdown}s`;
+  }
+
+  // Kick off
+  fetchAndRender();
+</script>
+</body>
+</html>
