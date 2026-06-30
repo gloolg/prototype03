@@ -53,6 +53,7 @@ metanetwork-latest/
     └── public/
         ├── index.html             # EQI DApp (served at / and /dapp)
         ├── admin.html             # Admin panel (served at /admin)
+        ├── cabinet.html           # Cabinet page (served at /cabinet)
         └── transparency.html      # Public transparency dashboard
 ```
 
@@ -157,6 +158,18 @@ metanetwork-latest/
 | POST | `/admin/multi-envelopes/:id/deliver` | Retry delivery (FAILED or TIMEOUT envelopes with all sources CONFIRMED) |
 | POST | `/admin/multi-envelopes/:id/refund/:net` | Refund one CONFIRMED source back on-chain |
 | POST | `/admin/multi-envelopes/:id/refund-all` | Refund all CONFIRMED sources |
+
+### Cabinet (access_token auth)
+
+User-facing balance page — no MetaMask required. Access controlled by a pre-issued `access_token` stored in the `cabinets` DB table.
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/cabinet` | — | Serves `cabinet.html` static page |
+| POST | `/cabinet/auth` | — | Exchange `access_token` → Bearer session token (8h). Body: `{access_token}` |
+| GET | `/cabinet/balance` | Bearer | Cabinet total balance + per-network reserved amounts. Response: `{ok, total_balance, reserved:{A,B,C,D}}` |
+| POST | `/cabinet/withdraw` | Bearer | Initiate tEQUI withdrawal to an external address. Body: `{recipient, target_network, amount}`. Response: `{ok, withdraw_id, steps}` |
+| GET | `/cabinet/withdraw/:withdraw_id/status` | Bearer | Poll withdrawal status + step log. Response: `{ok, withdrawal, steps}` |
 
 ---
 
