@@ -17,7 +17,7 @@ const sm             = require('../stateManager');
 const { processWithdraw } = require('../cabinet/withdraw');
 
 const SESSION_TTL = 8 * 60 * 60; // 8 hours
-const VALID_NETS  = ['A', 'B', 'C', 'D'];
+const getValidNetworkIds = () => Object.keys(sm.getState().networks);
 
 // ── Auth middleware ───────────────────────────────────────────────────────────
 
@@ -83,8 +83,9 @@ router.post('/withdraw', requireCabinet, async (req, res) => {
   if (!/^0x[0-9a-fA-F]{40}$/.test(recipient)) {
     return res.status(400).json({ ok: false, reason: 'Invalid Ethereum address format' });
   }
+  const VALID_NETS = getValidNetworkIds();
   if (!target_network || !VALID_NETS.includes(target_network)) {
-    return res.status(400).json({ ok: false, reason: 'target_network must be A, B, C, or D' });
+    return res.status(400).json({ ok: false, reason: 'Invalid target_network' });
   }
   const amt = parseInt(amount, 10);
   if (!Number.isInteger(amt) || amt <= 0) {

@@ -39,7 +39,7 @@ const { getProvider, CONTRACT_ADDRESS } = require('../executor/networks');
 const { executeCommand } = require('../executor');
 const { COMMAND_TYPE }   = require('../executor/commandTypes');
 const TRANSFER_TOPIC   = ethers.id('Transfer(address,address,uint256)');
-const VALID_NETS       = ['A', 'B', 'C', 'D'];
+const getValidNetworkIds = () => Object.keys(sm.getState().networks);
 
 const IT_ADDRESSES = () => ({
   A: (process.env.IT_A_ADDRESS || '').toLowerCase(),
@@ -55,6 +55,7 @@ router.post('/', async (req, res) => {
   }
 
   const { tx_hash, source_network, target_network, recipient_address, amount } = req.body;
+  const VALID_NETS = getValidNetworkIds();
 
   // ── Input validation ───────────────────────────────────────────────────────
   if (!tx_hash || !source_network || !target_network || !recipient_address || amount === undefined) {
@@ -64,7 +65,7 @@ router.post('/', async (req, res) => {
     });
   }
   if (!VALID_NETS.includes(source_network) || !VALID_NETS.includes(target_network)) {
-    return res.status(400).json({ ok: false, reason: 'Invalid network_id. Must be A, B, C, or D.' });
+    return res.status(400).json({ ok: false, reason: 'Invalid network_id.' });
   }
   const declaredAmount = parseInt(amount, 10);
   if (!Number.isInteger(declaredAmount) || declaredAmount <= 0) {

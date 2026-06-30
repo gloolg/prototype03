@@ -10,7 +10,7 @@ const { db, now }               = require('../db');
 const { executeCommand }        = require('../executor');
 const { COMMAND_TYPE }          = require('../executor/commandTypes');
 
-const VALID_NETS    = ['A', 'B', 'C', 'D'];
+const getValidNetworkIds = () => Object.keys(sm.getState().networks);
 const SESSION_TTL   = 8 * 60 * 60; // 8 hours
 
 // ── Auth helpers ─────────────────────────────────────────────────────────────
@@ -107,9 +107,10 @@ router.post('/register-wallet', (req, res) => {
   if (!/^0x[0-9a-f]{40}$/.test(addr)) {
     return res.status(400).json({ ok: false, reason: 'Invalid Ethereum address format.' });
   }
+  const VALID_NETS = getValidNetworkIds();
   const nets = network_ids.filter(n => VALID_NETS.includes(n));
   if (nets.length === 0) {
-    return res.status(400).json({ ok: false, reason: 'No valid network_ids (A/B/C/D).' });
+    return res.status(400).json({ ok: false, reason: 'No valid network_ids.' });
   }
   const results = sm.registerWallet(addr, nets);
   return res.json({ ok: true, address: addr, results });
@@ -189,7 +190,7 @@ router.get('/unprocessed-entries', (req, res) => {
 // Use when /entry was lost and you know the delivery details.
 router.post('/create-stuck-delivery', (req, res) => {
   const { tx_hash, source_network, target_network, from_address, to_address, amount } = req.body || {};
-  const VALID = ['A', 'B', 'C', 'D'];
+  const VALID = getValidNetworkIds();
 
   if (!tx_hash || !source_network || !target_network || !from_address || !to_address || !amount) {
     return res.status(400).json({ ok: false, reason: 'Missing required fields: tx_hash, source_network, target_network, from_address, to_address, amount.' });
@@ -377,8 +378,9 @@ router.post('/cabinets/create', (req, res) => {
     });
   }
 
-  const quota = amt / 4;
-  const state = sm.getState();
+  const quota      = amt / 4;
+  const state      = sm.getState();
+  const VALID_NETS = getValidNetworkIds();
 
   const totRow = db.prepare(`
     SELECT COALESCE(SUM(reserved_A),0) AS tA,

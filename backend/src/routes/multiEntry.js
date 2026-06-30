@@ -17,7 +17,7 @@ const { getProvider, CONTRACT_ADDRESS } = require('../executor/networks');
 const mseManager     = require('../mse/manager');
 
 const TRANSFER_TOPIC = ethers.id('Transfer(address,address,uint256)');
-const VALID_NETS     = ['A', 'B', 'C', 'D'];
+const getValidNetworkIds = () => Object.keys(sm.getState().networks);
 
 const IT_ADDRESSES = () => ({
   A: (process.env.IT_A_ADDRESS || '').toLowerCase(),
@@ -34,6 +34,8 @@ router.post('/create', (req, res) => {
 
   const { target_network, recipient, sources } = req.body || {};
 
+  const VALID_NETS = getValidNetworkIds();
+
   if (!target_network || !recipient || !Array.isArray(sources) || sources.length < 2) {
     return res.status(400).json({
       ok:     false,
@@ -41,7 +43,7 @@ router.post('/create', (req, res) => {
     });
   }
   if (!VALID_NETS.includes(target_network)) {
-    return res.status(400).json({ ok: false, reason: 'Invalid target_network. Use A, B, C, or D.' });
+    return res.status(400).json({ ok: false, reason: 'Invalid target_network.' });
   }
   if (!/^0x[0-9a-fA-F]{40}$/.test(recipient)) {
     return res.status(400).json({ ok: false, reason: 'Invalid recipient address.' });
@@ -113,6 +115,8 @@ router.post('/:envelope_id/submit', async (req, res) => {
 
   const { envelope_id } = req.params;
   const { tx_hash, source_network } = req.body || {};
+
+  const VALID_NETS = getValidNetworkIds();
 
   if (!tx_hash || !source_network) {
     return res.status(400).json({ ok: false, reason: 'Required: tx_hash, source_network.' });
