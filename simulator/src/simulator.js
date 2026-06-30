@@ -3,17 +3,19 @@
 // ─── MetaRegistry State Simulator (v1.0) ─────────────────────────────────────
 // Single entry point. Assembles all modules.
 
-const constants     = require('./constants');
-const idGenerator   = require('./idGenerator');
-const stateFactory  = require('./stateFactory');
-const invariants    = require('./invariants');
-const genesis       = require('./genesis');
-const treasury      = require('./treasury');
-const sourceRes     = require('./sourceResolution');
-const crossNetwork  = require('./crossNetwork');
-const observation   = require('./observation');
-const dappIntent    = require('./dappIntent');
-const transparency  = require('./transparency');
+const constants        = require('./constants');
+const idGenerator      = require('./idGenerator');
+const stateFactory     = require('./stateFactory');
+const invariants       = require('./invariants');
+const genesis          = require('./genesis');
+const treasury         = require('./treasury');
+const sourceRes        = require('./sourceResolution');
+const crossNetwork     = require('./crossNetwork');
+const observation      = require('./observation');
+const dappIntent       = require('./dappIntent');
+const transparency     = require('./transparency');
+const networkAlloc     = require('./networkAllocation');
+const networkRebalance = require('./networkRebalance');
 
 module.exports = {
   // Constants
@@ -66,4 +68,11 @@ module.exports = {
   // Transparency
   getTransparencySnapshot:        transparency.getTransparencySnapshot,
   getEventHistory:                transparency.getEventHistory,
+
+  // Network allocation
+  calculateActiveShares:          networkAlloc.calculateActiveShares,
+  calculateFrozenReserve:         networkAlloc.calculateFrozenReserve,
+
+  // Network rebalance
+  rebalanceOnNetworkAdd:          networkRebalance.rebalanceOnNetworkAdd,
 };

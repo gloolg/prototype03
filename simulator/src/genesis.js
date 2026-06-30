@@ -26,6 +26,7 @@ const {
 } = require('./stateFactory');
 
 const { checkInvariants, checkTraceability, computeTotals } = require('./invariants');
+const { calculateActiveShares, calculateFrozenReserve } = require('./networkAllocation');
 
 const {
   MINTED_PER_NETWORK,
@@ -90,11 +91,19 @@ function initializeGenesis(config) {
     config_by_id[n.network_id] = n;
   }
 
+  // ── Compute per-network active shares dynamically ──────────────────────────
+  // For N=4: yields {A:25000, B:25000, C:25000, D:25000} — identical to the
+  // previous hardcoded STARTING_IT_ACTIVE_PER_NETWORK=25_000 (regression-safe).
+  const activeShares = calculateActiveShares(NETWORK_IDS, A_ACTIVE_EXPECTED);
+
   // ── Initialize each network ────────────────────────────────────────────────
   for (const net_def of NETWORKS) {
     const net_id   = net_def.network_id;
     const net_conf = config_by_id[net_id];
     const it_id    = net_def.it_id;
+
+    const itActive = activeShares[net_id];
+    const itFrozen = calculateFrozenReserve(net_id, MINTED_PER_NETWORK, itActive);
 
     // Create NetworkState
     const net = createNetworkState({
@@ -105,11 +114,10 @@ function initializeGenesis(config) {
       it_address:     net_conf.it_address,
     });
 
-    // Set starting partition: 25,000 active / 75,000 frozen per network
-    // This is the canonical logical partition set by MetaRegistry at genesis.
+    // Set starting partition via dynamic allocation.
     // wallet_active_total remains 0 — no wallets funded yet.
-    net.IT_ACTIVE = STARTING_IT_ACTIVE_PER_NETWORK;
-    net.IT_FROZEN = STARTING_IT_FROZEN_PER_NETWORK;
+    net.IT_ACTIVE = itActive;
+    net.IT_FROZEN = itFrozen;
 
     state.networks[net_id] = net;
 
@@ -119,8 +127,8 @@ function initializeGenesis(config) {
       it_id,
       it_address: net_conf.it_address,
     });
-    treasury.IT_ACTIVE = STARTING_IT_ACTIVE_PER_NETWORK;
-    treasury.IT_FROZEN = STARTING_IT_FROZEN_PER_NETWORK;
+    treasury.IT_ACTIVE = itActive;
+    treasury.IT_FROZEN = itFrozen;
     state.treasuries[net_id] = treasury;
 
     // Record GENESIS_MINT event
@@ -131,10 +139,7 @@ function initializeGenesis(config) {
       to_address:  net_conf.it_address,
       amount:      MINTED_PER_NETWORK,
       evidence:    `mock_mint_tx_${net_id}`,
-      state_after: {
-        IT_ACTIVE: STARTING_IT_ACTIVE_PER_NETWORK,
-        IT_FROZEN: STARTING_IT_FROZEN_PER_NETWORK,
-      },
+      state_after: { IT_ACTIVE: itActive, IT_FROZEN: itFrozen },
     });
     state.events.push(evt_mint);
 
@@ -146,11 +151,7 @@ function initializeGenesis(config) {
       to_address:  net_conf.it_address,
       amount:      MINTED_PER_NETWORK,
       evidence:    `mock_capture_${net_id}`,
-      state_after: {
-        it_id,
-        IT_ACTIVE: STARTING_IT_ACTIVE_PER_NETWORK,
-        IT_FROZEN: STARTING_IT_FROZEN_PER_NETWORK,
-      },
+      state_after: { it_id, IT_ACTIVE: itActive, IT_FROZEN: itFrozen },
     });
     state.events.push(evt_capture);
   }
