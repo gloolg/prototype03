@@ -84,7 +84,7 @@ function restoreState() {
     state.networks[row.network_id] = {
       network_id:          row.network_id,
       network_name:        row.network_name,
-      priority:            _networkPriority(row.network_id),
+      priority:            row.priority || 0,
       token_contract:      `mock_contract_${row.network_id}`,
       it_address:          _itAddressFromTreasury(row.network_id),
       status:              'ACTIVE',
@@ -507,10 +507,6 @@ function registerWallet(address, network_ids) {
 
 // ─── Private helpers ──────────────────────────────────────────────────────────
 
-const NETWORK_PRIORITIES = { A: 1, B: 2, C: 3, D: 4 };
-function _networkPriority(network_id) {
-  return NETWORK_PRIORITIES[network_id] || 99;
-}
 
 function _itAddressFromTreasury(network_id) {
   const row = db.prepare('SELECT it_address FROM treasury_state WHERE network_id = ?').get(network_id);
@@ -547,23 +543,25 @@ function _initPersistedSets() {
 
 function _persistNetworks(state) {
   const upsert = db.prepare(`
-    INSERT INTO network_state (network_id, network_name, total_active, total_frozen, total_unavailable, is_initialized, initialized_at, updated_at)
-    VALUES (@network_id, @network_name, @total_active, @total_frozen, @total_unavailable, 1, @initialized_at, @updated_at)
+    INSERT INTO network_state (network_id, network_name, total_active, total_frozen, total_unavailable, priority, is_initialized, initialized_at, updated_at)
+    VALUES (@network_id, @network_name, @total_active, @total_frozen, @total_unavailable, @priority, 1, @initialized_at, @updated_at)
     ON CONFLICT(network_id) DO UPDATE SET
       total_active      = excluded.total_active,
       total_frozen      = excluded.total_frozen,
       total_unavailable = excluded.total_unavailable,
+      priority          = excluded.priority,
       updated_at        = excluded.updated_at
   `);
   for (const [net_id, net] of Object.entries(state.networks)) {
     upsert.run({
-      network_id:       net_id,
-      network_name:     net.network_name,
-      total_active:     net.IT_ACTIVE + net.wallet_active_total,
-      total_frozen:     net.IT_FROZEN, // reporting only; restore uses treasury_state.frozen_balance
+      network_id:        net_id,
+      network_name:      net.network_name,
+      total_active:      net.IT_ACTIVE + net.wallet_active_total,
+      total_frozen:      net.IT_FROZEN,
       total_unavailable: net.UNAVAILABLE || 0,
-      initialized_at:   now(),
-      updated_at:       now(),
+      priority:          net.priority || 0,
+      initialized_at:    now(),
+      updated_at:        now(),
     });
   }
 }

@@ -241,6 +241,11 @@ try {
   db.exec('ALTER TABLE network_state ADD COLUMN total_unavailable INTEGER NOT NULL DEFAULT 0');
 } catch (_) {}
 
+// Migration: add priority column for dynamic N support
+try {
+  db.exec('ALTER TABLE network_state ADD COLUMN priority INTEGER NOT NULL DEFAULT 0');
+} catch (_) {}
+
 // Migration: add source_network + from_address to execution_log for STUCK/refund support
 try {
   db.exec('ALTER TABLE execution_log ADD COLUMN source_network TEXT');
