@@ -8,7 +8,7 @@
 ## Repository Structure
 
 ```
-metanetwork-latest/
+prototype03/
 ├── README.md                      # Lightpaper — architecture overview
 ├── README_FULL.md                 # This file — full technical reference
 ├── contracts/tEQUI.sol            # ERC-20 token contract (deployed on 4 testnets)
