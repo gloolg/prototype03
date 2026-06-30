@@ -72,6 +72,11 @@ app.get('/admin', (req, res) => {
 });
 app.use('/admin',                require('./routes/admin'));
 app.use('/admin',                require('./routes/adminMse'));
+// Network config management page (admin-only, Bearer-protected)
+app.get('/admin/network', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/network.html'));
+});
+app.use('/admin',                require('./routes/adminNetworks'));
 
 // Cabinet — user-facing balance page (no MetaMask, access_token auth)
 app.get('/cabinet', (req, res) => {

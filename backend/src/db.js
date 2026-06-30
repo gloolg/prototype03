@@ -331,6 +331,24 @@ db.exec(`
   );
 `);
 
+// Network config: admin-managed configuration for additional networks (5th onwards)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS network_config (
+    network_id          TEXT PRIMARY KEY,
+    network_name        TEXT NOT NULL,
+    chain_type          TEXT NOT NULL DEFAULT 'EVM',
+    rpc_url             TEXT NOT NULL,
+    chain_id            INTEGER,
+    contract_address    TEXT,
+    it_eoa_address      TEXT NOT NULL,
+    it_eoa_private_key  TEXT NOT NULL,
+    symbol              TEXT NOT NULL DEFAULT 'tEQUI',
+    explorer_url        TEXT,
+    created_at          INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at          INTEGER NOT NULL DEFAULT (unixepoch())
+  );
+`);
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
