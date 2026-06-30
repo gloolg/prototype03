@@ -26,10 +26,10 @@ const { getProvider, CONTRACT_ADDRESS } = require('../executor/networks');
 const ERC20_ABI = ['function balanceOf(address) view returns (uint256)'];
 
 const NETWORK_CONFIG = {
-  A: { network_id: 'A', name: 'Ethereum Sepolia',       chainId: 11155111, it_address: process.env.IT_A_ADDRESS, symbol: 'ETH' },
-  B: { network_id: 'B', name: 'BNB Smart Chain Testnet', chainId: 97,       it_address: process.env.IT_B_ADDRESS, symbol: 'BNB' },
-  C: { network_id: 'C', name: 'Polygon PoS Amoy',        chainId: 80002,    it_address: process.env.IT_C_ADDRESS, symbol: 'POL' },
-  D: { network_id: 'D', name: 'Arbitrum Sepolia',        chainId: 421614,   it_address: process.env.IT_D_ADDRESS, symbol: 'ETH' },
+  A: { network_id: 'A', name: 'Ethereum Sepolia',        chainId: 11155111, it_address: process.env.IT_A_ADDRESS, symbol: 'ETH', explorer_url: 'https://sepolia.etherscan.io' },
+  B: { network_id: 'B', name: 'BNB Smart Chain Testnet', chainId: 97,       it_address: process.env.IT_B_ADDRESS, symbol: 'BNB', explorer_url: 'https://testnet.bscscan.com' },
+  C: { network_id: 'C', name: 'Polygon PoS Amoy',        chainId: 80002,    it_address: process.env.IT_C_ADDRESS, symbol: 'POL', explorer_url: 'https://amoy.polygonscan.com' },
+  D: { network_id: 'D', name: 'Arbitrum Sepolia',        chainId: 421614,   it_address: process.env.IT_D_ADDRESS, symbol: 'ETH', explorer_url: 'https://sepolia.arbiscan.io' },
 };
 
 // GET /registry/check-address

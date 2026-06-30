@@ -508,7 +508,7 @@ async function switchToNetwork() {
 // ── Balances ──────────────────────────────────────────────────────────────────
 async function refreshBalances() {
   if (!account) return;
-  ['A', 'B', 'C', 'D'].forEach(n => setBalCell(n, 'loading…', 'dim'));
+  Object.keys(NETWORKS).forEach(n => setBalCell(n, 'loading…', 'dim'));
   const totalEl = document.getElementById('bal-total');
   if (totalEl) totalEl.textContent = '…';
   try {
@@ -524,7 +524,7 @@ async function refreshBalances() {
       onFormChange();
     }
   } catch (_) {
-    ['A', 'B', 'C', 'D'].forEach(n => setBalCell(n, 'error', 'err'));
+    Object.keys(NETWORKS).forEach(n => setBalCell(n, 'error', 'err'));
     if (totalEl) totalEl.textContent = '—';
   }
 }
@@ -616,7 +616,7 @@ function isFormReady() {
     // Target network is excluded only for true self-loops (recipient == sender);
     // delivering to a DIFFERENT wallet on the target network is a valid MSE source.
     const isSelf = recipient.toLowerCase() === account.toLowerCase();
-    const totalAvail = ['A','B','C','D']
+    const totalAvail = Object.keys(NETWORKS)
       .filter(n => !(n === target && isSelf))
       .reduce((sum, n) => sum + (Number(_onchainBal[n]) || 0), 0);
 
@@ -852,10 +852,10 @@ function showStatusCard() {
 }
 
 function setTxLink(hash, net_id) {
-  const map = { A: 'https://sepolia.etherscan.io', B: 'https://testnet.bscscan.com', C: 'https://amoy.polygonscan.com', D: 'https://sepolia.arbiscan.io' };
-  const el  = document.getElementById('tx-link');
-  el.hidden = false;
-  el.innerHTML = `Tx: <a href="${map[net_id] || '#'}/tx/${hash}" target="_blank">${hash}</a>`;
+  const base = (NETWORKS[net_id]?.explorer_url) || '#';
+  const el   = document.getElementById('tx-link');
+  el.hidden  = false;
+  el.innerHTML = `Tx: <a href="${base}/tx/${hash}" target="_blank">${hash}</a>`;
 }
 
 function stepActive(n, text) { _step(n, text, 'active'); }
@@ -880,7 +880,6 @@ function handleTxError(e, step = 1) {
 
 // ── Multi-source (MSE) ────────────────────────────────────────────────────────
 
-const MSE_NET_NAMES = { A: 'Ethereum Sepolia', B: 'BNB Testnet', C: 'Polygon Amoy', D: 'Arbitrum Sepolia' };
 
 function toggleMseMode() {
   mseMode = !mseMode;
@@ -1012,7 +1011,7 @@ function buildMseAllocRows() {
   const recipient = (document.getElementById('f-recipient').value || '').trim().toLowerCase();
   const isSelf    = recipient === account.toLowerCase();
   // Exclude target network as a source only for true self-loops (recipient == sender)
-  const nets      = ['A','B','C','D'].filter(n => !(n === target && isSelf) && (_onchainBal[n] || 0) > 0);
+  const nets      = Object.keys(NETWORKS).filter(n => !(n === target && isSelf) && (_onchainBal[n] || 0) > 0);
 
   const wrap = document.getElementById('mse-alloc-rows');
   if (!wrap) return;
@@ -1038,7 +1037,7 @@ function buildMseAllocRows() {
     const v   = def[n] || 0;
     return `<div class="mse-alloc-row ${v > 0 ? 'has-amount' : ''}" id="mse-row-${n}">
       <span class="mse-alloc-net">${n}</span>
-      <span class="mse-alloc-name">${MSE_NET_NAMES[n] || n}</span>
+      <span class="mse-alloc-name">${NETWORKS[n]?.name || n}</span>
       <span class="mse-alloc-bal">${(bal).toLocaleString()} avail</span>
       <input type="number" class="mse-alloc-input" id="mse-amt-${n}"
              min="0" max="${bal}" value="${v}" placeholder="0"
@@ -1054,7 +1053,7 @@ function onMseAllocChange() {
   const total     = parseInt(document.getElementById('f-amount').value, 10) || 0;
   const recipient = (document.getElementById('f-recipient').value || '').trim().toLowerCase();
   const isSelf    = recipient === (account || '').toLowerCase();
-  const nets      = ['A','B','C','D'].filter(n => !(n === target && isSelf));
+  const nets      = Object.keys(NETWORKS).filter(n => !(n === target && isSelf));
 
   let allocated = 0, sources = 0;
   for (const n of nets) {
@@ -1086,7 +1085,7 @@ async function startMse() {
   const amount    = parseInt(document.getElementById('f-amount').value, 10);
 
   const isSelf = recipient.toLowerCase() === account.toLowerCase();
-  const sources = ['A','B','C','D']
+  const sources = Object.keys(NETWORKS)
     .filter(n => !(n === target && isSelf))
     .map(n => ({ n, val: parseInt((document.getElementById('mse-amt-' + n) || {}).value, 10) || 0 }))
     .filter(x => x.val > 0)
@@ -1143,7 +1142,7 @@ function renderMseSteps() {
            <button style="font-size:0.72rem;padding:5px 10px;background:#1a7a3a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit"
                    onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'"
                    onclick="mseSwitchToNet('${s.source_network}')">
-             ⇄ Switch MetaMask to Network ${s.source_network} — ${MSE_NET_NAMES[s.source_network] || ''}
+             ⇄ Switch MetaMask to Network ${s.source_network} — ${NETWORKS[s.source_network]?.name || ''}
            </button>
          </div>`
       : '';
@@ -1155,7 +1154,7 @@ function renderMseSteps() {
     return `<div class="mse-step ${cls}" id="mse-step-${i}">
       <div class="mse-step-header">
         <span class="mse-step-num">${i + 1}</span>
-        <span class="mse-step-net">Net ${s.source_network} — ${MSE_NET_NAMES[s.source_network] || ''}</span>
+        <span class="mse-step-net">Net ${s.source_network} — ${NETWORKS[s.source_network]?.name || ''}</span>
         <span class="mse-step-amt">${s.expected_amount.toLocaleString()} tEQUI</span>
         <span class="mse-step-badge">${badge}</span>
       </div>
