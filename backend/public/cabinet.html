@@ -80,10 +80,6 @@
         <label>Мережа доставки</label>
         <select id="f-network" onchange="onFormChange()">
           <option value="">— оберіть мережу —</option>
-          <option value="A">A — Ethereum Sepolia</option>
-          <option value="B">B — BNB Smart Chain Testnet</option>
-          <option value="C">C — Polygon PoS Amoy</option>
-          <option value="D">D — Arbitrum Sepolia</option>
         </select>
       </div>
       <div class="form-group">
@@ -105,15 +101,34 @@
 
 <script>
   const API = '';
-  let _token = sessionStorage.getItem('cabinet_token') || null;
+  let _token   = sessionStorage.getItem('cabinet_token') || null;
+  let NETWORKS = {};
 
-  const NET_NAMES = { A: 'Ethereum Sepolia', B: 'BNB Testnet', C: 'Polygon Amoy', D: 'Arbitrum Sepolia' };
+  async function loadConfig() {
+    try {
+      const d = await (await fetch('/registry/config')).json();
+      if (d.ok) d.networks.forEach(n => { NETWORKS[n.network_id] = n; });
+    } catch (_) {}
+    populateNetworkSelect();
+  }
+
+  function populateNetworkSelect() {
+    const sel = document.getElementById('f-network');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">— оберіть мережу —</option>';
+    Object.values(NETWORKS).forEach(n => {
+      const opt = document.createElement('option');
+      opt.value       = n.network_id;
+      opt.textContent = `${n.network_id} — ${n.name}`;
+      if (n.network_id === cur) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
 
   // ── Init ──────────────────────────────────────────────────────────────────
-  (function init() {
-    if (_token) {
-      showDashboard();
-    }
+  (async function init() {
+    await loadConfig();
+    if (_token) showDashboard();
   })();
 
   // ── Login ─────────────────────────────────────────────────────────────────
@@ -179,7 +194,7 @@
     const amount    = parseInt(document.getElementById('f-amount').value, 10);
     const valid =
       /^0x[0-9a-fA-F]{40}$/.test(recipient) &&
-      ['A','B','C','D'].includes(network) &&
+      !!NETWORKS[network] &&
       Number.isInteger(amount) && amount > 0;
     document.getElementById('btn-withdraw').disabled = !valid;
   }
@@ -220,7 +235,7 @@
       const lines = data.steps.map(s => ({
         label: s.network_id,
         text:  s.ok
-          ? `${s.amount} tEQUI → ${NET_NAMES[s.network_id]} · tx: ${s.tx_hash}`
+          ? `${s.amount} tEQUI → ${NETWORKS[s.network_id]?.name || s.network_id} · tx: ${s.tx_hash}`
           : `ПОМИЛКА (${s.reason})`,
         cls: s.ok ? 'ok' : 'err',
       }));
@@ -233,7 +248,7 @@
       if (data.steps.length > 1) {
         const note = document.getElementById('withdraw-note');
         note.textContent =
-          'Кошти списані з кількох мереж: спочатку з обраної, потім за порядком A→B→C→D.';
+          'Кошти списані з кількох мереж послідовно.';
         note.hidden = false;
       }
     } catch (e) {
