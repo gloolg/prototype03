@@ -33,7 +33,7 @@ const { executeCommand } = require('../executor');
 const { COMMAND_TYPE }   = require('../executor/commandTypes');
 const { db, now }        = require('../db');
 
-const VALID_NETWORK_IDS = ['A', 'B', 'C', 'D'];
+const getValidNetworkIds = () => Object.keys(sm.getState().networks);
 
 router.post('/distribute', async (req, res) => {
   // ── Guard: genesis ──────────────────────────────────────────────────────
@@ -44,6 +44,7 @@ router.post('/distribute', async (req, res) => {
   const { network_id, wallet_address, amount, command_id: client_command_id } = req.body;
 
   // ── Input validation ────────────────────────────────────────────────────
+  const VALID_NETWORK_IDS = getValidNetworkIds();
   if (!network_id || !VALID_NETWORK_IDS.includes(network_id)) {
     return res.status(400).json({ ok: false,
       reason: `"network_id" must be one of: ${VALID_NETWORK_IDS.join(', ')}. Got: ${network_id}` });

@@ -4,7 +4,7 @@
 // getTransparencySnapshot() — canonical state output for public page
 // getEventHistory()         — filtered append-only event history
 
-const { CONSTANTS, NETWORK_IDS } = require('./constants');
+const { CONSTANTS } = require('./constants');
 const { computeTotals } = require('./invariants');
 
 const DEFAULT_LIMIT = 50;
@@ -19,17 +19,21 @@ function getTransparencySnapshot(state, limit = DEFAULT_LIMIT) {
     A_ACTIVE:         totals.a_active_current,
     TOTAL_FROZEN:     totals.IT_FROZEN_total,
     UNAVAILABLE_TOTAL: totals.UNAVAILABLE_total,
-    invariant_status: totals.a_active_current === CONSTANTS.A_ACTIVE_EXPECTED &&
-                      totals.IT_FROZEN_total   === CONSTANTS.TOTAL_FROZEN_EXPECTED &&
-                      totals.total_minted      === CONSTANTS.TOTAL_MINTED_EXPECTED
-                        ? 'ok' : 'violation',
+    invariant_status: (() => {
+      const N = Object.keys(state.networks).length;
+      const expectedMinted = N * CONSTANTS.MINTED_PER_NETWORK;
+      const expectedFrozen = expectedMinted - CONSTANTS.A_ACTIVE_EXPECTED;
+      return totals.a_active_current === CONSTANTS.A_ACTIVE_EXPECTED &&
+             totals.IT_FROZEN_total   === expectedFrozen &&
+             totals.total_minted      === expectedMinted ? 'ok' : 'violation';
+    })(),
     system_status:    state.status,
     stop_reason:      state.stop_reason || null,
   };
 
   // ── Per-network breakdown ──────────────────────────────────────────────────
   const per_network = {};
-  for (const net_id of NETWORK_IDS) {
+  for (const net_id of Object.keys(state.networks)) {
     const net = state.networks[net_id];
     if (!net) continue;
     per_network[net_id] = {
@@ -44,7 +48,7 @@ function getTransparencySnapshot(state, limit = DEFAULT_LIMIT) {
 
   // ── Treasury state ─────────────────────────────────────────────────────────
   const treasury_state = {};
-  for (const net_id of NETWORK_IDS) {
+  for (const net_id of Object.keys(state.networks)) {
     const tr = state.treasuries[net_id];
     if (!tr) continue;
     treasury_state[tr.it_id] = {
@@ -60,7 +64,7 @@ function getTransparencySnapshot(state, limit = DEFAULT_LIMIT) {
   let total_unavailable       = 0;
   let reconciliation_required = 0;
 
-  for (const net_id of NETWORK_IDS) {
+  for (const net_id of Object.keys(state.networks)) {
     const net = state.networks[net_id];
     if (!net) continue;
     total_active_wallets  += net.wallet_active_total + net.IT_ACTIVE;

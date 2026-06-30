@@ -7,7 +7,6 @@
 
 const {
   CONSTANTS,
-  NETWORK_IDS,
   EVENT_TYPE,
   SNAPSHOT_PHASE,
   REASON_CODE,
@@ -38,7 +37,7 @@ function mockObservedExternalTransfer(state, {
   if (!active_check.ok) return { ok: false, reason: active_check.reason };
 
   // Basic validation
-  if (!NETWORK_IDS.includes(network_id)) {
+  if (!state.networks[network_id]) {
     return { ok: false, reason: REASON_CODE.INVALID_SOURCE_NETWORK, network_id };
   }
   if (!Number.isInteger(amount) || amount <= 0) {

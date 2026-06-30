@@ -54,10 +54,10 @@ router.post('/', (req, res) => {
     });
   }
 
-  if (networks.length !== 4) {
+  if (networks.length < 1) {
     return res.status(400).json({
       ok:     false,
-      reason: `"networks" must contain exactly 4 entries. Got ${networks.length}.`,
+      reason: '"networks" must contain at least 1 entry.',
     });
   }
 

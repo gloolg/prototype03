@@ -49,7 +49,7 @@ const express = require('express');
 const router  = express.Router();
 const sm      = require('../stateManager');
 
-const VALID_NETWORK_IDS  = ['A', 'B', 'C', 'D'];
+const getValidNetworkIds = () => Object.keys(sm.getState().networks);
 const VALID_SOURCE_MODES = ['AUTOMATIC', 'USER_DEFINED'];
 
 // POST /transfer
@@ -94,6 +94,7 @@ router.post('/', (req, res) => {
     });
   }
 
+  const VALID_NETWORK_IDS = getValidNetworkIds();
   if (!target_network || !VALID_NETWORK_IDS.includes(target_network)) {
     return res.status(400).json({
       ok:     false,

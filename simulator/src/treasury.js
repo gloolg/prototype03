@@ -8,7 +8,6 @@
 
 const {
   CONSTANTS,
-  NETWORK_IDS,
   EVENT_TYPE,
   SNAPSHOT_PHASE,
   REASON_CODE,
@@ -89,7 +88,7 @@ function applyTreasuryDistribution(state, network_id, wallet_address, amount) {
   // total wallet_active after this operation must not exceed MAX_WALLET_ACTIVE_STARTING
   // across ALL networks
   let total_wallet_active_after = 0;
-  for (const nid of NETWORK_IDS) {
+  for (const nid of Object.keys(state.networks)) {
     const n = state.networks[nid];
     if (!n) continue;
     total_wallet_active_after += n.wallet_active_total;
@@ -112,7 +111,7 @@ function applyTreasuryDistribution(state, network_id, wallet_address, amount) {
   // Note: MIN_IT_ACTIVE_STARTING (40,000) is a global constraint across all networks.
   // We check the global IT_ACTIVE total after this operation.
   let total_IT_ACTIVE_after = 0;
-  for (const nid of NETWORK_IDS) {
+  for (const nid of Object.keys(state.networks)) {
     const n = state.networks[nid];
     if (!n) continue;
     total_IT_ACTIVE_after += (nid === network_id ? it_active_after : n.IT_ACTIVE);

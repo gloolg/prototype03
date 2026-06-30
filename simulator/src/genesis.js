@@ -6,13 +6,10 @@
 
 const {
   CONSTANTS,
-  NETWORKS,
-  NETWORK_IDS,
   EVENT_TYPE,
   SNAPSHOT_PHASE,
   SNAPSHOT_STATUS,
   SYSTEM_STATUS,
-  REASON_CODE,
 } = require('./constants');
 
 const { generateEventId, generateSnapshotId } = require('./idGenerator');
@@ -30,11 +27,7 @@ const { calculateActiveShares, calculateFrozenReserve } = require('./networkAllo
 
 const {
   MINTED_PER_NETWORK,
-  STARTING_IT_ACTIVE_PER_NETWORK,
-  STARTING_IT_FROZEN_PER_NETWORK,
-  TOTAL_MINTED_EXPECTED,
   A_ACTIVE_EXPECTED,
-  TOTAL_FROZEN_EXPECTED,
 } = CONSTANTS;
 
 // ─── initializeGenesis(config) → State ───────────────────────────────────────
@@ -55,20 +48,13 @@ function initializeGenesis(config) {
   if (!config || !Array.isArray(config.networks)) {
     return { ok: false, reason: 'config.networks must be an array' };
   }
-  if (config.networks.length !== CONSTANTS.NETWORK_COUNT) {
-    return {
-      ok:     false,
-      reason: `config.networks must contain exactly ${CONSTANTS.NETWORK_COUNT} networks, got ${config.networks.length}`,
-    };
+  if (config.networks.length < 1) {
+    return { ok: false, reason: 'config.networks must contain at least 1 network' };
   }
 
-  const provided_ids = config.networks.map(n => n.network_id).sort();
-  const expected_ids = [...NETWORK_IDS].sort();
-  if (JSON.stringify(provided_ids) !== JSON.stringify(expected_ids)) {
-    return {
-      ok:     false,
-      reason: `config.networks must contain exactly networks ${NETWORK_IDS.join(',')}. Got: ${provided_ids.join(',')}`,
-    };
+  const provided_ids = config.networks.map(n => n.network_id);
+  if (new Set(provided_ids).size !== provided_ids.length) {
+    return { ok: false, reason: `Duplicate network_ids in config: ${provided_ids.join(',')}` };
   }
 
   const it_addresses = config.networks.map(n => n.it_address);
@@ -92,15 +78,15 @@ function initializeGenesis(config) {
   }
 
   // ── Compute per-network active shares dynamically ──────────────────────────
-  // For N=4: yields {A:25000, B:25000, C:25000, D:25000} — identical to the
-  // previous hardcoded STARTING_IT_ACTIVE_PER_NETWORK=25_000 (regression-safe).
-  const activeShares = calculateActiveShares(NETWORK_IDS, A_ACTIVE_EXPECTED);
+  // For N=4 (A,B,C,D): yields {A:25000,B:25000,C:25000,D:25000} — regression-safe.
+  const configNetworkIds = config.networks.map(n => n.network_id);
+  const activeShares = calculateActiveShares(configNetworkIds, A_ACTIVE_EXPECTED);
 
   // ── Initialize each network ────────────────────────────────────────────────
-  for (const net_def of NETWORKS) {
-    const net_id   = net_def.network_id;
-    const net_conf = config_by_id[net_id];
-    const it_id    = net_def.it_id;
+  for (let idx = 0; idx < config.networks.length; idx++) {
+    const net_conf = config.networks[idx];
+    const net_id   = net_conf.network_id;
+    const it_id    = net_conf.it_id || `IT-${net_id}`;
 
     const itActive = activeShares[net_id];
     const itFrozen = calculateFrozenReserve(net_id, MINTED_PER_NETWORK, itActive);
@@ -108,8 +94,8 @@ function initializeGenesis(config) {
     // Create NetworkState
     const net = createNetworkState({
       network_id:     net_id,
-      network_name:   net_def.network_name,
-      priority:       net_def.priority,
+      network_name:   net_conf.network_name || `Network ${net_id}`,
+      priority:       net_conf.priority     || idx + 1,
       token_contract: net_conf.token_contract || `mock_contract_${net_id}`,
       it_address:     net_conf.it_address,
     });
@@ -197,8 +183,12 @@ function validateStartingDistribution(state) {
     failures.push(...trace_report.untracked.map(u => ({ check: 'TRACEABILITY', ...u })));
   }
 
+  // Compute expected shares using the same algorithm as initializeGenesis.
+  const stateNetworkIds = Object.keys(state.networks);
+  const expectedShares  = calculateActiveShares(stateNetworkIds, A_ACTIVE_EXPECTED);
+
   // Verify exact starting values per network
-  for (const net_id of NETWORK_IDS) {
+  for (const net_id of stateNetworkIds) {
     const net = state.networks[net_id];
     const treasury = state.treasuries[net_id];
 
@@ -211,22 +201,25 @@ function validateStartingDistribution(state) {
       continue;
     }
 
-    // IT_ACTIVE must be exactly STARTING_IT_ACTIVE_PER_NETWORK
-    if (net.IT_ACTIVE !== STARTING_IT_ACTIVE_PER_NETWORK) {
+    const expectedItActive = expectedShares[net_id];
+    const expectedItFrozen = calculateFrozenReserve(net_id, MINTED_PER_NETWORK, expectedItActive);
+
+    // IT_ACTIVE must match dynamic allocation spec
+    if (net.IT_ACTIVE !== expectedItActive) {
       failures.push({
         check:      'STARTING_IT_ACTIVE',
         network_id: net_id,
-        expected:   STARTING_IT_ACTIVE_PER_NETWORK,
+        expected:   expectedItActive,
         actual:     net.IT_ACTIVE,
       });
     }
 
-    // IT_FROZEN must be exactly STARTING_IT_FROZEN_PER_NETWORK
-    if (net.IT_FROZEN !== STARTING_IT_FROZEN_PER_NETWORK) {
+    // IT_FROZEN must match structural reserve spec
+    if (net.IT_FROZEN !== expectedItFrozen) {
       failures.push({
         check:      'STARTING_IT_FROZEN',
         network_id: net_id,
-        expected:   STARTING_IT_FROZEN_PER_NETWORK,
+        expected:   expectedItFrozen,
         actual:     net.IT_FROZEN,
       });
     }
@@ -274,19 +267,12 @@ function validateStartingDistribution(state) {
   const genesis_mints    = state.events.filter(e => e.event_type === EVENT_TYPE.GENESIS_MINT);
   const genesis_captures = state.events.filter(e => e.event_type === EVENT_TYPE.GENESIS_TREASURY_CAPTURE);
 
-  if (genesis_mints.length !== CONSTANTS.NETWORK_COUNT) {
-    failures.push({
-      check:    'GENESIS_MINT_EVENTS',
-      expected: CONSTANTS.NETWORK_COUNT,
-      actual:   genesis_mints.length,
-    });
+  const N = stateNetworkIds.length;
+  if (genesis_mints.length !== N) {
+    failures.push({ check: 'GENESIS_MINT_EVENTS',    expected: N, actual: genesis_mints.length });
   }
-  if (genesis_captures.length !== CONSTANTS.NETWORK_COUNT) {
-    failures.push({
-      check:    'GENESIS_CAPTURE_EVENTS',
-      expected: CONSTANTS.NETWORK_COUNT,
-      actual:   genesis_captures.length,
-    });
+  if (genesis_captures.length !== N) {
+    failures.push({ check: 'GENESIS_CAPTURE_EVENTS', expected: N, actual: genesis_captures.length });
   }
 
   const ok = failures.length === 0;
@@ -294,7 +280,7 @@ function validateStartingDistribution(state) {
     ok,
     failures,
     summary: ok
-      ? `Genesis valid. A_ACTIVE=${A_ACTIVE_EXPECTED}, TOTAL_FROZEN=${TOTAL_FROZEN_EXPECTED}, TOTAL_MINTED=${TOTAL_MINTED_EXPECTED}. All networks IT_ACTIVE=${STARTING_IT_ACTIVE_PER_NETWORK}/IT_FROZEN=${STARTING_IT_FROZEN_PER_NETWORK}.`
+      ? `Genesis valid. N=${N}, A_ACTIVE=${A_ACTIVE_EXPECTED}, TOTAL_MINTED=${N * MINTED_PER_NETWORK}, TOTAL_FROZEN=${N * MINTED_PER_NETWORK - A_ACTIVE_EXPECTED}. Per-network IT_ACTIVE allocations match calculateActiveShares spec.`
       : `Genesis validation failed: ${failures.length} issue(s).`,
   };
 }

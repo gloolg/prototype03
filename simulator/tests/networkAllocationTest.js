@@ -295,6 +295,261 @@ test('B15', 'rebalance_ops: exactly 4 existing networks adjusted (delta=5,000 ea
   return true;
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+console.log('\n=== GROUP 5: validateStartingDistribution regression (dynamic check for N=4) ===\n');
+// ─────────────────────────────────────────────────────────────────────────────
+
+test('G09', 'validateStartingDistribution passes on valid genesis (dynamic check)', () => {
+  S.resetCounters();
+  const state = S.initializeGenesis(CONFIG).state;
+  const result = S.validateStartingDistribution(state);
+  if (!result.ok) return { failures: result.failures };
+  return true;
+});
+
+test('G10', 'validateStartingDistribution catches wrong IT_ACTIVE (dynamic expected)', () => {
+  S.resetCounters();
+  const state = S.initializeGenesis(CONFIG).state;
+  state.networks['A'].IT_ACTIVE = 99_999;          // one off
+  state.treasuries['A'].IT_ACTIVE = 99_999;
+  const result = S.validateStartingDistribution(state);
+  if (result.ok) return { error: 'Should have failed but passed' };
+  const hit = result.failures.some(f => f.check === 'STARTING_IT_ACTIVE' && f.network_id === 'A' && f.expected === 25_000);
+  return hit ? true : { error: 'Expected STARTING_IT_ACTIVE failure for A with expected=25000', failures: result.failures };
+});
+
+test('G11', 'validateStartingDistribution: for N=4 expected values = 25000/75000 (static=dynamic)', () => {
+  const { calculateActiveShares: cas, calculateFrozenReserve: cfr } = require('../src/networkAllocation');
+  const CONSTS = S.CONSTANTS;
+  const shares = cas(['A','B','C','D'], CONSTS.A_ACTIVE_EXPECTED);
+  for (const id of ['A','B','C','D']) {
+    if (shares[id] !== CONSTS.STARTING_IT_ACTIVE_PER_NETWORK)
+      return { id, dynamic: shares[id], static: CONSTS.STARTING_IT_ACTIVE_PER_NETWORK };
+    const frozen = cfr(id, CONSTS.MINTED_PER_NETWORK, shares[id]);
+    if (frozen !== CONSTS.STARTING_IT_FROZEN_PER_NETWORK)
+      return { id, dynamic_frozen: frozen, static: CONSTS.STARTING_IT_FROZEN_PER_NETWORK };
+  }
+  return true;
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+console.log('\n=== GROUP 6: calculateActiveShares — edge cases (N=1, N=2, N=3) ===\n');
+// ─────────────────────────────────────────────────────────────────────────────
+
+test('E01', 'N=1: single network receives full A_ACTIVE (100,000)', () => {
+  const shares = calculateActiveShares(['A'], 100_000);
+  return eq(shares['A'], 100_000, 'A');
+});
+
+test('E02', 'N=1: sum = 100,000', () => {
+  const shares = calculateActiveShares(['A'], 100_000);
+  const sum = Object.values(shares).reduce((s, v) => s + v, 0);
+  return eq(sum, 100_000, 'sum');
+});
+
+test('E03', 'N=2: A = 50,000', () => {
+  const shares = calculateActiveShares(['A','B'], 100_000);
+  return eq(shares['A'], 50_000, 'A');
+});
+
+test('E04', 'N=2: B = 50,000', () => {
+  const shares = calculateActiveShares(['A','B'], 100_000);
+  return eq(shares['B'], 50_000, 'B');
+});
+
+test('E05', 'N=2: sum = 100,000', () => {
+  const shares = calculateActiveShares(['A','B'], 100_000);
+  const sum = Object.values(shares).reduce((s, v) => s + v, 0);
+  return eq(sum, 100_000, 'sum');
+});
+
+test('E06', 'N=3: A = 33,334 (ceil(100000/3))', () => {
+  const shares = calculateActiveShares(['A','B','C'], 100_000);
+  return eq(shares['A'], 33_334, 'A');
+});
+
+test('E07', 'N=3: B = 33,334', () => {
+  const shares = calculateActiveShares(['A','B','C'], 100_000);
+  return eq(shares['B'], 33_334, 'B');
+});
+
+test('E08', 'N=3: C = 33,332 (absorbs rounding remainder)', () => {
+  const shares = calculateActiveShares(['A','B','C'], 100_000);
+  return eq(shares['C'], 33_332, 'C');
+});
+
+test('E09', 'N=3: sum = 100,000 exactly', () => {
+  const shares = calculateActiveShares(['A','B','C'], 100_000);
+  const sum = Object.values(shares).reduce((s, v) => s + v, 0);
+  return eq(sum, 100_000, 'sum');
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+console.log('\n=== GROUP 7: rebalance rounding — 5→6 networks, A_ACTIVE=1,000,000,000 ===\n');
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Build a mock state with N networks, IT_ACTIVE = calculateActiveShares result, IT_FROZEN = 0.
+// Used for parametric / large-A_ACTIVE tests where the real genesis config doesn't apply.
+function buildMockState(networkIds, A_ACTIVE) {
+  const shares = calculateActiveShares(networkIds, A_ACTIVE);
+  const state  = S.createMasterState();
+  state.status          = 'ACTIVE';
+  state.genesis_complete = true;
+  for (const id of networkIds) {
+    const net = S.createNetworkState({
+      network_id:   id,
+      network_name: `Network ${id}`,
+      priority:     networkIds.indexOf(id) + 1,
+      it_address:   `0xIT_${id}`,
+    });
+    net.IT_ACTIVE = shares[id];
+    state.networks[id] = net;
+    const treasury = S.createTreasuryState({
+      network_id: id,
+      it_id:      `IT-${id}`,
+      it_address: `0xIT_${id}`,
+    });
+    treasury.IT_ACTIVE = shares[id];
+    state.treasuries[id] = treasury;
+  }
+  return state;
+}
+
+// State: 5 networks (A-E), each IT_ACTIVE = 200,000,000 (exact split of 1B)
+// Adding 6th network F → first rounding step in 1B scenario.
+const state5to6 = buildMockState(['A','B','C','D','E'], BILLION);
+const result5to6 = rebalanceOnNetworkAdd(state5to6, 'F', BILLION, 0);
+
+test('P01', '5→6: rebalanceOnNetworkAdd returns ok=true', () => {
+  return eq(result5to6.ok, true, 'ok');
+});
+
+test('P02', '5→6: activeSum = 1,000,000,000 exactly', () => {
+  return eq(result5to6.activeSum, BILLION, 'activeSum');
+});
+
+test('P03', '5→6: existing network A = 166,666,667', () => {
+  return eq(state5to6.networks['A'].IT_ACTIVE, 166_666_667, 'A');
+});
+
+test('P04', '5→6: existing network B = 166,666,667', () => {
+  return eq(state5to6.networks['B'].IT_ACTIVE, 166_666_667, 'B');
+});
+
+test('P05', '5→6: existing network C = 166,666,667', () => {
+  return eq(state5to6.networks['C'].IT_ACTIVE, 166_666_667, 'C');
+});
+
+test('P06', '5→6: existing network D = 166,666,667', () => {
+  return eq(state5to6.networks['D'].IT_ACTIVE, 166_666_667, 'D');
+});
+
+test('P07', '5→6: existing network E = 166,666,667', () => {
+  return eq(state5to6.networks['E'].IT_ACTIVE, 166_666_667, 'E');
+});
+
+test('P08', '5→6: new network F = 166,666,665 (rounding remainder)', () => {
+  return eq(state5to6.networks['F'].IT_ACTIVE, 166_666_665, 'F');
+});
+
+test('P09', '5→6: rebalance_ops = 5 ops, delta = 33,333,333 each (200M - 166,666,667)', () => {
+  if (result5to6.rebalance_ops.length !== 5)
+    return { expected: 5, actual: result5to6.rebalance_ops.length };
+  for (const op of result5to6.rebalance_ops) {
+    if (op.delta !== 33_333_333)
+      return { network_id: op.network_id, expected_delta: 33_333_333, actual: op.delta };
+  }
+  return true;
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+console.log('\n=== GROUP 8: chain rebalance N=4→12, A_ACTIVE=1,000,000,000 ===\n');
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Shared mutable state: each rebalanceOnNetworkAdd call mutates it in place,
+// simulating sequential network additions over time.
+const chainState = buildMockState(['A','B','C','D'], BILLION);
+
+test('C01', 'Chain baseline N=4: Σ IT_ACTIVE = 1,000,000,000 (all=250,000,000)', () => {
+  let sum = 0;
+  for (const id of Object.keys(chainState.networks)) sum += chainState.networks[id].IT_ACTIVE;
+  if (sum !== BILLION) return { expected: BILLION, actual: sum };
+  // All should be 250M (exact equal split)
+  for (const id of ['A','B','C','D']) {
+    if (chainState.networks[id].IT_ACTIVE !== 250_000_000)
+      return { id, expected: 250_000_000, actual: chainState.networks[id].IT_ACTIVE };
+  }
+  return true;
+});
+
+test('C02', 'Chain N=5 (add E): sum = 1,000,000,000, all=200,000,000 (exact split)', () => {
+  const r = rebalanceOnNetworkAdd(chainState, 'E', BILLION, 0);
+  if (!r.ok || r.activeSum !== BILLION) return { FAILED_AT_N: 5, ok: r.ok, activeSum: r.activeSum };
+  for (const id of ['A','B','C','D','E']) {
+    if (chainState.networks[id].IT_ACTIVE !== 200_000_000)
+      return { id, expected: 200_000_000, actual: chainState.networks[id].IT_ACTIVE };
+  }
+  return true;
+});
+
+test('C03', 'Chain N=6 (add F): sum = 1,000,000,000 (first rounding step)', () => {
+  const r = rebalanceOnNetworkAdd(chainState, 'F', BILLION, 0);
+  if (!r.ok || r.activeSum !== BILLION) return { FAILED_AT_N: 6, ok: r.ok, activeSum: r.activeSum };
+  return true;
+});
+
+test('C04', 'Chain N=7 (add G): sum = 1,000,000,000', () => {
+  const r = rebalanceOnNetworkAdd(chainState, 'G', BILLION, 0);
+  if (!r.ok || r.activeSum !== BILLION) return { FAILED_AT_N: 7, ok: r.ok, activeSum: r.activeSum };
+  return true;
+});
+
+test('C05', 'Chain N=8 (add H): sum = 1,000,000,000, all=125,000,000 (exact split)', () => {
+  const r = rebalanceOnNetworkAdd(chainState, 'H', BILLION, 0);
+  if (!r.ok || r.activeSum !== BILLION) return { FAILED_AT_N: 8, ok: r.ok, activeSum: r.activeSum };
+  for (const id of Object.keys(chainState.networks)) {
+    if (chainState.networks[id].IT_ACTIVE !== 125_000_000)
+      return { id, expected: 125_000_000, actual: chainState.networks[id].IT_ACTIVE };
+  }
+  return true;
+});
+
+test('C06', 'Chain N=9 (add I): sum = 1,000,000,000', () => {
+  const r = rebalanceOnNetworkAdd(chainState, 'I', BILLION, 0);
+  if (!r.ok || r.activeSum !== BILLION) return { FAILED_AT_N: 9, ok: r.ok, activeSum: r.activeSum };
+  return true;
+});
+
+test('C07', 'Chain N=10 (add J): sum = 1,000,000,000, all=100,000,000 (exact split)', () => {
+  const r = rebalanceOnNetworkAdd(chainState, 'J', BILLION, 0);
+  if (!r.ok || r.activeSum !== BILLION) return { FAILED_AT_N: 10, ok: r.ok, activeSum: r.activeSum };
+  for (const id of Object.keys(chainState.networks)) {
+    if (chainState.networks[id].IT_ACTIVE !== 100_000_000)
+      return { id, expected: 100_000_000, actual: chainState.networks[id].IT_ACTIVE };
+  }
+  return true;
+});
+
+test('C08', 'Chain N=11 (add K): sum = 1,000,000,000', () => {
+  const r = rebalanceOnNetworkAdd(chainState, 'K', BILLION, 0);
+  if (!r.ok || r.activeSum !== BILLION) return { FAILED_AT_N: 11, ok: r.ok, activeSum: r.activeSum };
+  return true;
+});
+
+test('C09', 'Chain N=12 (add L): sum = 1,000,000,000, first 11=83,333,334, L=83,333,326', () => {
+  const r = rebalanceOnNetworkAdd(chainState, 'L', BILLION, 0);
+  if (!r.ok || r.activeSum !== BILLION) return { FAILED_AT_N: 12, ok: r.ok, activeSum: r.activeSum };
+  const all = Object.keys(chainState.networks);            // A..K then L
+  for (const id of all.slice(0, -1)) {
+    if (chainState.networks[id].IT_ACTIVE !== 83_333_334)
+      return { id, expected: 83_333_334, actual: chainState.networks[id].IT_ACTIVE };
+  }
+  const lastId = all[all.length - 1];                     // L
+  if (chainState.networks[lastId].IT_ACTIVE !== 83_333_326)
+    return { lastId, expected: 83_333_326, actual: chainState.networks[lastId].IT_ACTIVE };
+  return true;
+});
+
 // ─── Summary ──────────────────────────────────────────────────────────────────
 
 console.log(`\n${'─'.repeat(55)}`);

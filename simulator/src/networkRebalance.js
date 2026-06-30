@@ -22,7 +22,7 @@ const { calculateActiveShares, calculateFrozenReserve } = require('./networkAllo
 const { createNetworkState, createTreasuryState } = require('./stateFactory');
 
 // ─── rebalanceOnNetworkAdd ────────────────────────────────────────────────────
-function rebalanceOnNetworkAdd(currentState, newNetworkId, A_ACTIVE) {
+function rebalanceOnNetworkAdd(currentState, newNetworkId, A_ACTIVE, mintedPerNetwork = CONSTANTS.MINTED_PER_NETWORK) {
   const existingIds = Object.keys(currentState.networks);
   const allIds      = [...existingIds, newNetworkId];
   const newShares   = calculateActiveShares(allIds, A_ACTIVE);
@@ -52,12 +52,9 @@ function rebalanceOnNetworkAdd(currentState, newNetworkId, A_ACTIVE) {
   }
 
   // ── Initialise new network ─────────────────────────────────────────────────
-  const newItActive = newShares[newNetworkId];
-  const newItFrozen = calculateFrozenReserve(
-    newNetworkId,
-    CONSTANTS.MINTED_PER_NETWORK,
-    newItActive
-  );
+  const newItActive  = newShares[newNetworkId];
+  const rawFrozen    = calculateFrozenReserve(newNetworkId, mintedPerNetwork, newItActive);
+  const newItFrozen  = rawFrozen >= 0 ? rawFrozen : 0;
 
   const newNet = createNetworkState({
     network_id:   newNetworkId,

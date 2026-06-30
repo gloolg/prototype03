@@ -7,7 +7,6 @@
 const {
   CONSTANTS,
   NETWORKS,
-  NETWORK_IDS,
   SOURCE_OP_STATUS,
   REASON_CODE,
 } = require('./constants');
@@ -122,7 +121,7 @@ function resolveUserDefinedSources(state, envelope_id, sender_address, user_defi
     }
 
     // Network must exist
-    if (!NETWORK_IDS.includes(network_id)) {
+    if (!state.networks[network_id]) {
       return { ok: false, reason: REASON_CODE.INVALID_SOURCE_NETWORK, network_id };
     }
 

@@ -412,7 +412,7 @@
   function renderNetworks(snap) {
     const grid = document.getElementById('network-grid');
     const nets = snap.per_network || {};
-    const order = ['A', 'B', 'C', 'D'];
+    const order = Object.keys(snap.per_network || {});
 
     let html = '';
     for (const net_id of order) {

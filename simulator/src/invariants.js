@@ -5,14 +5,12 @@
 // checkTraceability() — verifies every tEQUI has a known location
 // triggerStop()       — halts the simulator on critical failure
 
-const { CONSTANTS, NETWORK_IDS, REASON_CODE, SNAPSHOT_PHASE, SNAPSHOT_STATUS, SYSTEM_STATUS, EVENT_TYPE } = require('./constants');
+const { CONSTANTS, REASON_CODE, SNAPSHOT_PHASE, SNAPSHOT_STATUS, SYSTEM_STATUS, EVENT_TYPE } = require('./constants');
 const { generateSnapshotId, generateEventId } = require('./idGenerator');
 const { createInvariantSnapshot, createEventRecord } = require('./stateFactory');
 
 const {
-  TOTAL_MINTED_EXPECTED,
   A_ACTIVE_EXPECTED,
-  TOTAL_FROZEN_EXPECTED,
   MINTED_PER_NETWORK,
 } = CONSTANTS;
 
@@ -23,7 +21,7 @@ function computeTotals(state) {
   let IT_FROZEN_total     = 0;
   let UNAVAILABLE_total   = 0;
 
-  for (const net_id of NETWORK_IDS) {
+  for (const net_id of Object.keys(state.networks)) {
     const net = state.networks[net_id];
     if (!net) continue;
     wallet_active_total += net.wallet_active_total;
@@ -51,6 +49,10 @@ function computeTotals(state) {
 // Returns { ok: bool, violations: [], snapshot: InvariantSnapshot }
 function checkInvariants(state, phase) {
   const totals = computeTotals(state);
+  // Compute expected totals dynamically — depends on how many networks are active
+  const networkIds = Object.keys(state.networks);
+  const TOTAL_MINTED_EXPECTED = networkIds.length * MINTED_PER_NETWORK;
+  const TOTAL_FROZEN_EXPECTED = TOTAL_MINTED_EXPECTED - A_ACTIVE_EXPECTED;
   const violations = [];
   const is_transitional = (phase === SNAPSHOT_PHASE.POST_SOURCE_FREEZE);
 
@@ -102,7 +104,7 @@ function checkInvariants(state, phase) {
   }
 
   // Invariant 4: PER_NETWORK_TOTAL
-  for (const net_id of NETWORK_IDS) {
+  for (const net_id of networkIds) {
     const net = state.networks[net_id];
     if (!net) {
       violations.push({
@@ -129,7 +131,7 @@ function checkInvariants(state, phase) {
   // Invariant 5: INTEGER_ONLY — checked via amounts being integers
   // (enforced at input validation; here we double-check key totals)
   const non_integers = [];
-  for (const net_id of NETWORK_IDS) {
+  for (const net_id of networkIds) {
     const net = state.networks[net_id];
     if (!net) continue;
     if (!Number.isInteger(net.wallet_active_total)) non_integers.push(`${net_id}.wallet_active_total`);
@@ -147,7 +149,7 @@ function checkInvariants(state, phase) {
 
   // Invariant 6: NO_NEGATIVE_STATE
   const negatives = [];
-  for (const net_id of NETWORK_IDS) {
+  for (const net_id of networkIds) {
     const net = state.networks[net_id];
     if (!net) continue;
     if (net.wallet_active_total < 0) negatives.push(`${net_id}.wallet_active_total`);
@@ -222,7 +224,7 @@ function checkTraceability(state) {
 
   // For each network: compute expected trackable amount
   // = wallet_active_total + IT_ACTIVE + UNAVAILABLE (IT_FROZEN is in treasury, always tracked)
-  for (const net_id of NETWORK_IDS) {
+  for (const net_id of Object.keys(state.networks)) {
     const net = state.networks[net_id];
     if (!net) continue;
 

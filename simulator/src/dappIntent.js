@@ -8,7 +8,6 @@
 
 const {
   CONSTANTS,
-  NETWORK_IDS,
   OPERATION_MODE,
   SOURCE_MODE,
   ADDRESS_POLICY,
@@ -111,7 +110,7 @@ function validateDAppIntent(state, intent) {
   }
 
   // 3. selected_network must exist
-  if (!NETWORK_IDS.includes(intent.selected_network)) {
+  if (!state.networks[intent.selected_network]) {
     return { ok: false, reason: REASON_CODE.INVALID_SOURCE_NETWORK, network_id: intent.selected_network };
   }
 

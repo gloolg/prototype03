@@ -26,8 +26,8 @@ const IDGEN_PATH      = path.resolve(__dirname, '../../simulator/src/idGenerator
 const sim             = require(SIMULATOR_PATH);
 const { seedCounters } = require(IDGEN_PATH);
 
-// Single source of truth for network IDs — mirrors simulator/src/constants.js
-const NETWORK_IDS = sim.NETWORK_IDS || ['A', 'B', 'C', 'D'];
+// Derive active network IDs from live state (not a hardcoded list)
+const getNetworkIds = () => Object.keys(_state.networks);
 
 // Lazy-required to avoid circular deps at module load time (networks.js → no stateManager import)
 function _networks() { return require('./executor/networks'); }
@@ -227,7 +227,7 @@ function canApplyTreasuryDistribution(network_id, wallet_address, amount) {
 
   // 60/40 rule: total wallet_active across all networks must not exceed MAX
   let total_wallet_after = 0;
-  for (const nid of NETWORK_IDS) {
+  for (const nid of getNetworkIds()) {
     const n = state.networks[nid];
     if (n) total_wallet_after += n.wallet_active_total;
   }
@@ -239,7 +239,7 @@ function canApplyTreasuryDistribution(network_id, wallet_address, amount) {
 
   // IT_ACTIVE minimum check
   let total_it_after = 0;
-  for (const nid of NETWORK_IDS) {
+  for (const nid of getNetworkIds()) {
     const n = state.networks[nid];
     if (n) total_it_after += (nid === network_id ? n.IT_ACTIVE - amount : n.IT_ACTIVE);
   }
@@ -673,9 +673,9 @@ function _storeTxHash(event_id, tx_hash) {
 async function loadOnChainBalances() {
   if (!_state) return;
   const { getTokenBalance, getITBalance, IT_ADDRESS } = _networks();
-  const EXPECTED = 100_000;
+  const EXPECTED = sim.CONSTANTS.MINTED_PER_NETWORK;
 
-  for (const net_id of NETWORK_IDS) {
+  for (const net_id of getNetworkIds()) {
     const net = _state.networks[net_id];
     if (!net) continue;
 
@@ -782,10 +782,10 @@ function applyCabinetWithdraw(network_id, to_address, amount) {
 // Returns per-network diff from expected 100,000.
 async function checkOnChainInvariant() {
   const { getTokenBalance, getITBalance } = _networks();
-  const EXPECTED = 100_000;
+  const EXPECTED = sim.CONSTANTS.MINTED_PER_NETWORK;
   const results  = [];
 
-  for (const net_id of NETWORK_IDS) {
+  for (const net_id of getNetworkIds()) {
     const walletRows = db.prepare(
       'SELECT DISTINCT LOWER(address) as addr FROM wallet_balance WHERE network_id = ?'
     ).all(net_id);
