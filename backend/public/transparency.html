@@ -323,12 +323,16 @@
 
   const REFRESH_INTERVAL_MS = 30_000; // 30 seconds
 
-  const NET_NAMES = {
-    A: 'Ethereum Sepolia',
-    B: 'BNB Smart Chain Testnet',
-    C: 'Polygon PoS Amoy',
-    D: 'Arbitrum Sepolia',
-  };
+  let NET_NAMES = {};
+
+  async function loadConfig() {
+    if (!API_URL || API_URL === 'REPLACE_WITH_BACKEND_URL') return;
+    try {
+      const r = await fetch(`${API_URL}/registry/config`, { cache: 'no-store' });
+      const d = await r.json();
+      if (d.ok) d.networks.forEach(n => { NET_NAMES[n.network_id] = n.name; });
+    } catch (_) {}
+  }
 
   const OP_LIMIT = 20;
 
@@ -525,7 +529,7 @@
   }
 
   // Kick off
-  fetchAndRender();
+  loadConfig().then(() => fetchAndRender());
 </script>
 </body>
 </html>
