@@ -60,9 +60,11 @@ curl -s "$BASE/transparency" | python3 -m json.tool
 curl -s -X POST "$BASE/genesis" \
   -H "Content-Type: application/json" \
   -d '{
-    "wallets": [
-      { "network_id": "A", "address": "'"$TESTER1"'", "is_cold_wallet": false },
-      { "network_id": "B", "address": "'"$TESTER2"'", "is_cold_wallet": false }
+    "networks": [
+      { "network_id": "A", "it_address": "0xDB9180f50AFB6eAcB671DD173B86bC5437844ed2" },
+      { "network_id": "B", "it_address": "0xF17eEbb229E8F767bBCA6C39E19f527165b9cdE1" },
+      { "network_id": "C", "it_address": "0x894d8842305d6E0c83903c6Da77cC281BEF73760" },
+      { "network_id": "D", "it_address": "0xF3250962637144FFEd4d3e2165dc76D19c43bC1c" }
     ]
   }'
 ```
