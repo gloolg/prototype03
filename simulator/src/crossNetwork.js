@@ -447,6 +447,18 @@ function applySameNetworkThroughMetaRegistry(state, {
   const net = state.networks[network_id];
   if (!net) return { ok: false, reason: REASON_CODE.INVALID_SOURCE_NETWORK, network_id };
 
+  // Block same-network self-transfer. Without this guard, sender and recipient
+  // resolve to the SAME wallet object below (identical network_id:address key),
+  // so `wallet_active -= amount` followed by `wallet_active += amount` cancels
+  // out silently — the function would return ok:true and log a full
+  // OPERATION_COMPLETED event for an operation that moved zero balance.
+  // /entry and /entry/multi/create already guard this at the route layer;
+  // this mirrors that guard here so the simulator function is safe on its
+  // own for any caller (e.g. POST /transfer, which has no such check).
+  if (sender_address.toLowerCase() === recipient_address.toLowerCase()) {
+    return { ok: false, reason: REASON_CODE.SELF_TRANSFER_NOT_ALLOWED, network_id, address: sender_address };
+  }
+
   // Sender wallet
   const sender_key = `${network_id}:${sender_address}`;
   const sender = state.wallets[sender_key];

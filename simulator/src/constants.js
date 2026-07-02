@@ -143,6 +143,7 @@ const REASON_CODE = {
   SYSTEM_STOP:                  'SYSTEM_STOP',
   WALLET_ACTIVE_CAP_EXCEEDED:   'WALLET_ACTIVE_CAP_EXCEEDED',
   IT_ACTIVE_BELOW_MINIMUM:      'IT_ACTIVE_BELOW_MINIMUM',
+  SELF_TRANSFER_NOT_ALLOWED:    'SELF_TRANSFER_NOT_ALLOWED',
 };
 
 // ─── Event types (§7) ─────────────────────────────────────────────────────────
