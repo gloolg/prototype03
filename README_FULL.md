@@ -1,7 +1,8 @@
 # MetaNetwork EQI — Technical Reference
 
 > Full technical documentation for the MetaRegistry MVP backend.  
-> For architecture overview see [README.md](./README.md).
+> For architecture overview see [README.md](./README.md).  
+> Repository: [github.com/gloolg/prototype03](https://github.com/gloolg/prototype03)
 
 ---
 

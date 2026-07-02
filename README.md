@@ -2,6 +2,8 @@
 
 **A canonical state layer for cross-network token accounting. Not a bridge.**
 
+Repository: [github.com/gloolg/prototype03](https://github.com/gloolg/prototype03)
+
 ---
 
 ## The Problem It Solves
