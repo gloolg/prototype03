@@ -62,6 +62,18 @@ app.use('/treasury',             require('./routes/treasury'));
 app.use('/transfer',             require('./routes/transfer'));
 app.use('/state',                require('./routes/state'));
 app.use('/events',               require('./routes/events'));
+// GET /transparency is dual-purpose: plain browser navigation (Accept: text/html)
+// gets the public dashboard page; API clients (curl, fetch — default Accept: */*,
+// which ties in favor of the first-listed type below) get the JSON snapshot from
+// routes/transparency.js, unchanged. This keeps the documented public API contract
+// at GET /transparency working while making the dashboard reachable at the same
+// URL a person would actually type, instead of only at /transparency.html.
+app.get('/transparency', (req, res, next) => {
+  if (req.accepts(['json', 'html']) === 'html') {
+    return res.sendFile(path.join(__dirname, '../public/transparency.html'));
+  }
+  next();
+});
 app.use('/transparency',         require('./routes/transparency'));
 app.use('/registry',             require('./routes/registry'));
 app.use('/entry',                require('./routes/entry'));

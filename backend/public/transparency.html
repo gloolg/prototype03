@@ -5,258 +5,103 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MetaNetwork EQI — Live Transparency</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: #0b0f1a;
-      color: #d0d6e8;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      background: #0d0d0d;
+      color: #e0e0e0;
       min-height: 100vh;
-      padding: 24px 16px 48px;
+      padding: 24px;
     }
 
-    h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      letter-spacing: .03em;
-      color: #fff;
-      margin-bottom: 4px;
-    }
+    h1 { font-size: 1.2rem; color: #fff; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .subtitle { font-size: 0.75rem; color: #555; margin-bottom: 32px; }
 
-    .subtitle {
-      font-size: .85rem;
-      color: #6b7a99;
-      margin-bottom: 28px;
-    }
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+    .page-header .subtitle { margin-bottom: 0; }
+    .btn-back { padding: 9px 18px; font-size: 0.82rem; border-radius: 6px; color: #ccc; background: #2a2a2a; text-decoration: none; display: inline-block; white-space: nowrap; }
+    .btn-back:hover { opacity: 0.85; }
 
-    /* ── Status badge ── */
-    .status-row {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 28px;
-      flex-wrap: wrap;
-    }
+    .card { background: #161616; border: 1px solid #2a2a2a; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+    .card h2 { font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px; }
 
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      padding: 6px 14px;
-      border-radius: 999px;
-      font-size: .82rem;
-      font-weight: 700;
-      letter-spacing: .05em;
-      text-transform: uppercase;
-    }
-    .badge.ok        { background: rgba(34,197,94,.15); color: #22c55e; border: 1px solid rgba(34,197,94,.3); }
-    .badge.stopped   { background: rgba(239,68,68,.15);  color: #ef4444; border: 1px solid rgba(239,68,68,.3); }
-    .badge.violation { background: rgba(234,179,8,.15);  color: #eab308; border: 1px solid rgba(234,179,8,.3); }
-    .badge.loading   { background: rgba(100,116,139,.15); color: #94a3b8; border: 1px solid rgba(100,116,139,.3); }
+    .row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+    .row:last-child { margin-bottom: 0; }
+    .label { font-size: 0.72rem; color: #555; min-width: 110px; }
+    .value { font-size: 0.82rem; color: #ccc; word-break: break-all; font-variant-numeric: tabular-nums; }
 
-    .dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      display: inline-block;
-    }
-    .dot.ok        { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
-    .dot.stopped   { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
-    .dot.violation { background: #eab308; box-shadow: 0 0 6px #eab308; }
-    .dot.loading   { background: #94a3b8; }
+    /* ── Status badge (shared token set: ok / warn / err, + loading) ── */
+    .status-row { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+    .badge { display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; letter-spacing: 0.05em; text-transform: uppercase; }
+    .badge.ok      { background: #1a3a1a; color: #7ee8a2; }
+    .badge.warn    { background: #3a2a00; color: #f5a623; }
+    .badge.err     { background: #3a0a0a; color: #e05555; }
+    .badge.loading { background: #1a1a1a; color: #777; }
 
-    .refresh-info {
-      font-size: .78rem;
-      color: #475569;
-      margin-left: auto;
-    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+    .dot.ok      { background: #7ee8a2; box-shadow: 0 0 6px #7ee8a2; }
+    .dot.warn    { background: #f5a623; box-shadow: 0 0 6px #f5a623; }
+    .dot.err     { background: #e05555; box-shadow: 0 0 6px #e05555; }
+    .dot.loading { background: #777; }
 
-    /* ── Section headers ── */
-    .section-label {
-      font-size: .7rem;
-      font-weight: 700;
-      letter-spacing: .12em;
-      text-transform: uppercase;
-      color: #4a5568;
-      margin-bottom: 10px;
-      margin-top: 28px;
-    }
+    .refresh-info { font-size: 0.72rem; color: #555; margin-left: auto; }
+
+    .section-label { font-size: 0.72rem; font-weight: bold; letter-spacing: 0.1em; text-transform: uppercase; color: #666; margin-bottom: 10px; margin-top: 28px; }
+    .section-label:first-of-type { margin-top: 0; }
 
     /* ── Global counters ── */
-    .counters {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 12px;
-      margin-bottom: 4px;
-    }
-
-    .counter-card {
-      background: #141929;
-      border: 1px solid #1e2a45;
-      border-radius: 10px;
-      padding: 16px 18px;
-    }
-
-    .counter-label {
-      font-size: .72rem;
-      color: #5a6780;
-      text-transform: uppercase;
-      letter-spacing: .08em;
-      margin-bottom: 6px;
-    }
-
-    .counter-value {
-      font-size: 1.4rem;
-      font-weight: 700;
-      color: #e2e8f0;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .counter-value.highlight { color: #60a5fa; }
+    .counters { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+    .counter-card { background: #161616; border: 1px solid #2a2a2a; border-radius: 8px; padding: 16px 18px; }
+    .counter-label { font-size: 0.7rem; color: #555; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+    .counter-value { font-size: 1.4rem; font-weight: bold; color: #e0e0e0; font-variant-numeric: tabular-nums; }
+    .counter-value.highlight { color: #3a7bfd; }
     .counter-value.frozen    { color: #a78bfa; }
-    .counter-value.danger    { color: #f87171; }
+    .counter-value.danger    { color: #e05555; }
 
     /* ── Per-network grid ── */
-    .network-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 12px;
-    }
-
-    .net-card {
-      background: #141929;
-      border: 1px solid #1e2a45;
-      border-radius: 10px;
-      padding: 14px 16px;
-    }
-
-    .net-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 12px;
-    }
-
-    .net-id {
-      font-size: .65rem;
-      font-weight: 700;
-      letter-spacing: .1em;
-      color: #fff;
-      background: #1e3a5f;
-      padding: 2px 8px;
-      border-radius: 4px;
-    }
-
-    .net-name {
-      font-size: .75rem;
-      color: #5a6780;
-    }
-
-    .net-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: .8rem;
-      padding: 3px 0;
-    }
-
-    .net-row-label { color: #5a6780; }
-    .net-row-value { font-weight: 600; color: #c7d2e8; font-variant-numeric: tabular-nums; }
-    .net-row-value.zero { color: #374151; }
-
-    .net-divider {
-      height: 1px;
-      background: #1e2a45;
-      margin: 8px 0;
-    }
+    .network-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    .net-card { background: #161616; border: 1px solid #2a2a2a; border-radius: 8px; padding: 14px 16px; }
+    .net-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+    .net-id { flex-shrink: 0; font-size: 0.65rem; font-weight: bold; letter-spacing: 0.08em; color: #fff; background: #1e3a5f; padding: 2px 8px; border-radius: 4px; }
+    .net-name { flex: 1; min-width: 0; font-size: 0.72rem; color: #555; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .net-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; padding: 3px 0; }
+    .net-row-label { color: #666; }
+    .net-row-value { font-weight: bold; color: #ccc; font-variant-numeric: tabular-nums; }
+    .net-row-value.zero { color: #444; }
+    .net-row-value.frozen { color: #a78bfa; }
+    .net-row-value.danger { color: #e05555; }
+    .net-divider { height: 1px; background: #2a2a2a; margin: 8px 0; }
 
     /* ── Operations table ── */
-    .ops-table-wrap {
-      overflow-x: auto;
-      border-radius: 10px;
-      border: 1px solid #1e2a45;
-    }
+    .ops-table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid #2a2a2a; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.76rem; }
+    thead th { background: #161616; color: #555; font-weight: bold; text-transform: uppercase; letter-spacing: 0.06em; padding: 10px 14px; text-align: left; white-space: nowrap; }
+    tbody tr { border-top: 1px solid #222; }
+    tbody tr:nth-child(odd)  { background: #101010; }
+    tbody tr:nth-child(even) { background: #131313; }
+    tbody td { padding: 9px 14px; color: #999; white-space: nowrap; }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: .78rem;
-    }
+    .tag { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 0.68rem; font-weight: bold; letter-spacing: 0.03em; }
+    .tag.GENESIS       { background: rgba(59,130,246,.18);  color: #60a5fa; }
+    .tag.TREASURY      { background: rgba(139,92,246,.18);  color: #a78bfa; }
+    .tag.CROSS_NETWORK { background: rgba(20,184,166,.18);  color: #2dd4bf; }
+    .tag.OBSERVATION   { background: rgba(234,179,8,.18);   color: #f5a623; }
+    .tag.FREEZE        { background: rgba(224,85,85,.18);   color: #e05555; }
+    .tag.UNFREEZE      { background: rgba(126,232,162,.18); color: #7ee8a2; }
+    .tag.STOP          { background: #3a0a0a;               color: #e05555; }
+    .tag.default       { background: #1e1e1e;               color: #888; }
 
-    thead th {
-      background: #141929;
-      color: #4a5568;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .07em;
-      padding: 10px 14px;
-      text-align: left;
-      white-space: nowrap;
-    }
+    .addr { font-family: 'SF Mono', monospace; font-size: 0.74rem; color: #666; }
 
-    tbody tr {
-      border-top: 1px solid #1a2135;
-    }
+    /* ── Error / loading / stop ── */
+    .msg-box { text-align: center; padding: 40px 20px; color: #444; font-size: 0.85rem; }
+    .error-box { background: #1a0808; border: 1px solid #3a1010; border-radius: 6px; padding: 12px 16px; color: #e05555; font-size: 0.78rem; margin-bottom: 16px; line-height: 1.6; }
+    .stop-reason-box { background: #1a0808; border: 1px solid #3a1010; border-radius: 6px; padding: 12px 16px; color: #f5a0a0; font-size: 0.78rem; margin-bottom: 16px; line-height: 1.6; }
 
-    tbody tr:nth-child(odd) { background: #0d1120; }
-    tbody tr:nth-child(even) { background: #0f1525; }
-
-    tbody td {
-      padding: 9px 14px;
-      color: #9aa5bf;
-      white-space: nowrap;
-    }
-
-    .tag {
-      display: inline-block;
-      padding: 1px 7px;
-      border-radius: 4px;
-      font-size: .7rem;
-      font-weight: 700;
-      letter-spacing: .04em;
-    }
-
-    .tag.GENESIS         { background: rgba(59,130,246,.2); color: #60a5fa; }
-    .tag.TREASURY        { background: rgba(139,92,246,.2); color: #a78bfa; }
-    .tag.CROSS_NETWORK   { background: rgba(20,184,166,.2); color: #2dd4bf; }
-    .tag.OBSERVATION     { background: rgba(234,179,8,.2);  color: #fbbf24; }
-    .tag.FREEZE          { background: rgba(239,68,68,.2);  color: #f87171; }
-    .tag.UNFREEZE        { background: rgba(34,197,94,.2);  color: #4ade80; }
-    .tag.STOP            { background: rgba(239,68,68,.3);  color: #ef4444; }
-    .tag.default         { background: rgba(100,116,139,.2); color: #94a3b8; }
-
-    .addr {
-      font-family: monospace;
-      font-size: .76rem;
-      color: #6b7a99;
-    }
-
-    /* ── Error / loading ── */
-    .msg-box {
-      text-align: center;
-      padding: 40px 20px;
-      color: #4a5568;
-      font-size: .9rem;
-    }
-
-    .error-box {
-      background: rgba(239,68,68,.08);
-      border: 1px solid rgba(239,68,68,.2);
-      border-radius: 8px;
-      padding: 12px 16px;
-      color: #f87171;
-      font-size: .82rem;
-      margin-bottom: 16px;
-    }
-
-    .stop-reason-box {
-      background: rgba(239,68,68,.1);
-      border: 1px solid rgba(239,68,68,.25);
-      border-radius: 8px;
-      padding: 12px 16px;
-      color: #fca5a5;
-      font-size: .82rem;
-      margin-bottom: 16px;
-    }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: #111; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
 
     @media (max-width: 480px) {
       .counters { grid-template-columns: 1fr 1fr; }
@@ -266,8 +111,13 @@
 </head>
 <body>
 
-<h1>MetaNetwork EQI</h1>
-<p class="subtitle">Live Transparency Dashboard — MetaRegistry MVP</p>
+<div class="page-header">
+  <div>
+    <h1>MetaNetwork EQI</h1>
+    <p class="subtitle">Live Transparency Dashboard — MetaRegistry MVP</p>
+  </div>
+  <a href="/dapp" class="btn-back">Open DApp →</a>
+</div>
 
 <div class="status-row">
   <span class="badge loading" id="status-badge">
@@ -316,6 +166,8 @@
 </div>
 
 <script>
+  'use strict';
+
   // ── CONFIG ─────────────────────────────────────────────────────────────────
   // Replace with the public URL of your deployed backend.
   // Local dev: 'http://localhost:3000'
@@ -328,7 +180,7 @@
   async function loadConfig() {
     if (!API_URL || API_URL === 'REPLACE_WITH_BACKEND_URL') return;
     try {
-      const r = await fetch(`${API_URL}/registry/config`, { cache: 'no-store' });
+      const r = await fetch(`${API_URL}/registry/config`, { cache: 'no-store', headers: { 'Accept': 'application/json' } });
       const d = await r.json();
       if (d.ok) d.networks.forEach(n => { NET_NAMES[n.network_id] = n.name; });
     } catch (_) {}
@@ -380,17 +232,21 @@
     const sysStatus = (gs.system_status || '').toUpperCase();
     const invStatus = gs.invariant_status;
 
-    if (sysStatus === 'STOPPED') {
-      badge.className = 'badge stopped';
-      dot.className   = 'dot stopped';
+    // system_status enum is UNINITIALIZED | ACTIVE | STOP (simulator/constants.js
+    // SYSTEM_STATUS) — not "STOPPED". A previous version of this check compared
+    // against 'STOPPED', which never matched, so the halted-system indicator
+    // never fired even when the MetaRegistry was genuinely stopped.
+    if (sysStatus === 'STOP') {
+      badge.className = 'badge err';
+      dot.className   = 'dot err';
       text.textContent = 'STOPPED';
       if (gs.stop_reason) {
         stopBox.style.display = '';
         stopBox.textContent = 'Stop reason: ' + gs.stop_reason;
       }
     } else if (invStatus === 'violation') {
-      badge.className = 'badge violation';
-      dot.className   = 'dot violation';
+      badge.className = 'badge warn';
+      dot.className   = 'dot warn';
       text.textContent = 'INVARIANT VIOLATION';
       stopBox.style.display = 'none';
     } else {
@@ -403,9 +259,9 @@
 
   function renderCounters(snap) {
     const gs = snap.global_state;
-    document.getElementById('c-minted').textContent  = fmtNum(gs.TOTAL_MINTED);
-    document.getElementById('c-active').textContent  = fmtNum(gs.A_ACTIVE);
-    document.getElementById('c-frozen').textContent  = fmtNum(gs.TOTAL_FROZEN);
+    document.getElementById('c-minted').textContent = fmtNum(gs.TOTAL_MINTED);
+    document.getElementById('c-active').textContent = fmtNum(gs.A_ACTIVE);
+    document.getElementById('c-frozen').textContent = fmtNum(gs.TOTAL_FROZEN);
 
     const unavail = gs.UNAVAILABLE_TOTAL || 0;
     const uvEl = document.getElementById('c-unavail');
@@ -484,7 +340,15 @@
         return;
       }
 
-      const r = await fetch(`${API_URL}/transparency?limit=${OP_LIMIT}`, { cache: 'no-store' });
+      // Explicit Accept header: the backend serves this same dashboard page for
+      // GET /transparency when the client prefers text/html (plain browser
+      // navigation), and the JSON snapshot otherwise. fetch() defaults to
+      // Accept: */*, which still resolves to JSON here, but this stays correct
+      // even if that negotiation default is ever tightened server-side.
+      const r = await fetch(`${API_URL}/transparency?limit=${OP_LIMIT}`, {
+        cache: 'no-store',
+        headers: { 'Accept': 'application/json' },
+      });
       if (!r.ok) {
         const body = await r.text().catch(() => '');
         throw new Error(`HTTP ${r.status}: ${body.slice(0, 100)}`);
