@@ -137,8 +137,9 @@
 <div class="card">
   <h2>Wallet</h2>
   <div id="wallet-disconnected">
-    <button class="btn-primary" onclick="connectWallet()">Connect MetaMask</button>
+    <button class="btn-primary" onclick="connectWallet()" id="btn-connect">Connect MetaMask</button>
     <p class="note" style="margin-top:10px">Account selection prompt appears on every connect.</p>
+    <p class="note" id="connect-status" style="margin-top:6px"></p>
   </div>
   <div id="wallet-connected" hidden>
     <div class="row"><span class="label">Address</span><span class="value" id="w-address">—</span></div>
@@ -433,8 +434,31 @@ async function loadConfig() {
 }
 
 // ── Wallet ────────────────────────────────────────────────────────────────────
+let _connectHintTimer = null;
+
 async function connectWallet() {
   if (!window.ethereum) { alert('MetaMask not found. Please install MetaMask.'); return; }
+
+  const btn    = document.getElementById('btn-connect');
+  const status = document.getElementById('connect-status');
+  btn.disabled = true;
+  btn.textContent = 'Connecting…';
+  status.style.color = '#888';
+  status.textContent = 'Waiting for MetaMask…';
+
+  // If MetaMask never surfaces a popup, it's usually not a code bug — most often this
+  // site is already in MetaMask's "Connected sites" list (permission already granted,
+  // so wallet_requestPermissions resolves instantly with no UI), or another injected
+  // wallet extension is intercepting window.ethereum. Surface a hint after a delay
+  // instead of leaving the user staring at a button that looks like it did nothing.
+  clearTimeout(_connectHintTimer);
+  _connectHintTimer = setTimeout(() => {
+    status.style.color = '#e0a355';
+    status.textContent =
+      'No MetaMask popup? This site may already be approved — check MetaMask → Connected sites ' +
+      'and disconnect it there, or check for other wallet extensions overriding MetaMask.';
+  }, 8000);
+
   try {
     provider = new ethers.BrowserProvider(window.ethereum);
     // Force account-selection prompt on every connect
@@ -447,8 +471,22 @@ async function connectWallet() {
     document.getElementById('wallet-connected').hidden   = false;
     document.getElementById('balance-card').hidden       = false;
   } catch (e) {
-    const msg = e?.message || String(e);
-    if (!msg.includes('rejected') && e?.code !== 4001) alert('Connection failed: ' + msg);
+    // Match user-rejection by code, not by substring-matching "rejected" in the message —
+    // the previous check (msg.includes('rejected')) silently swallowed unrelated errors
+    // (e.g. "method not supported by this wallet") whose text happened to contain that
+    // word, making genuine failures look identical to "nothing happened".
+    // ethers v6 wraps a user-rejected wallet action as code 'ACTION_REJECTED';
+    // raw EIP-1193 rejections carry numeric code 4001.
+    const isUserRejection = e?.code === 4001 || e?.code === 'ACTION_REJECTED';
+    if (!isUserRejection) {
+      const msg = e?.shortMessage || e?.message || String(e);
+      alert('Connection failed: ' + msg);
+    }
+  } finally {
+    clearTimeout(_connectHintTimer);
+    btn.disabled = false;
+    btn.textContent = 'Connect MetaMask';
+    status.textContent = '';
   }
 }
 
