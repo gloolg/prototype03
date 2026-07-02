@@ -57,17 +57,40 @@ app.use((req, res, next) => {
 // Routes
 // ---------------------------------------------------------------------------
 
+const path = require('path');
+
+// ---------------------------------------------------------------------------
+// Page URL convention: canonical form is always the trailing-slash path
+// (matches /dapp/, the original entry point). Express's default (non-strict)
+// routing treats '/admin' and '/admin/' as the SAME pattern — registering
+// both separately doesn't distinguish them, the second is dead code. So each
+// page below is ONE route that branches on the literal req.path: exact
+// trailing-slash match serves the file, anything else (no slash, or the raw
+// .html filename) 301-redirects to the canonical form. This gives every page
+// exactly one URL, instead of 3-4 different strings all quietly working.
+function servePageCanonical(canonicalPath, file) {
+  const filePath = path.join(__dirname, '../public', file);
+  return (req, res) => {
+    if (req.path === canonicalPath) return res.sendFile(filePath);
+    return res.redirect(301, canonicalPath);
+  };
+}
+function redirectTo(canonicalPath) {
+  return (req, res) => res.redirect(301, canonicalPath);
+}
+
 app.use('/genesis',              require('./routes/genesis'));
 app.use('/treasury',             require('./routes/treasury'));
 app.use('/transfer',             require('./routes/transfer'));
 app.use('/state',                require('./routes/state'));
 app.use('/events',               require('./routes/events'));
-// GET /transparency is dual-purpose: plain browser navigation (Accept: text/html)
-// gets the public dashboard page; API clients (curl, fetch — default Accept: */*,
-// which ties in favor of the first-listed type below) get the JSON snapshot from
-// routes/transparency.js, unchanged. This keeps the documented public API contract
-// at GET /transparency working while making the dashboard reachable at the same
-// URL a person would actually type, instead of only at /transparency.html.
+
+// GET /transparency (no trailing slash) stays dual-purpose and UNREDIRECTED:
+// it's a documented public JSON API (curl $BASE/transparency, used throughout
+// demo-script.md) as well as the dashboard for plain browser navigation
+// (Accept: text/html). Redirecting it would break API callers that don't
+// follow redirects. /transparency/ below is the dedicated, always-HTML
+// canonical dashboard URL matching the site-wide trailing-slash convention.
 app.get('/transparency', (req, res, next) => {
   if (req.accepts(['json', 'html']) === 'html') {
     return res.sendFile(path.join(__dirname, '../public/transparency.html'));
@@ -75,34 +98,37 @@ app.get('/transparency', (req, res, next) => {
   next();
 });
 app.use('/transparency',         require('./routes/transparency'));
+app.get('/transparency/',        servePageCanonical('/transparency/', 'transparency.html'));
+app.get('/transparency.html',    redirectTo('/transparency/'));
+
 app.use('/registry',             require('./routes/registry'));
 app.use('/entry',                require('./routes/entry'));
 app.use('/entry/multi',          require('./routes/multiEntry'));
-// Serve admin panel HTML pages BEFORE the /admin API routers below.
-// Express tries middleware/routes in registration order: app.use('/admin', adminRouter)
-// applies requireAdmin to every /admin/* sub-path that doesn't match one of its own
-// routes first (router.use(requireAdmin) has no path filter, so it catches everything
-// that falls through). If these two page routes were registered AFTER the routers,
-// GET /admin/network would hit admin.js's requireAdmin and 401 before ever reaching
-// this handler — the page would never be served at all. Keep both page routes here.
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/admin.html'));
-});
-app.get('/admin/network', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/network.html'));
-});
+
+// Admin pages must be registered BEFORE the /admin API routers below.
+// app.use('/admin', adminRouter) applies requireAdmin to every /admin/* path
+// that doesn't match one of adminRouter's own routes first (router.use(mw)
+// has no path filter — it catches everything that falls through). If these
+// page routes were registered after the routers, they'd hit requireAdmin
+// and 401 before ever reaching the actual page handler.
+app.get('/admin',                servePageCanonical('/admin/', 'admin.html'));
+app.get('/admin.html',           redirectTo('/admin/'));
+app.get('/admin/network',        servePageCanonical('/admin/network/', 'network.html'));
+app.get('/network.html',         redirectTo('/admin/network/'));
 app.use('/admin',                require('./routes/admin'));
 app.use('/admin',                require('./routes/adminMse'));
 app.use('/admin',                require('./routes/adminNetworks'));
 
 // Cabinet — user-facing balance page (no MetaMask, access_token auth)
-app.get('/cabinet', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/cabinet.html'));
-});
+app.get('/cabinet',              servePageCanonical('/cabinet/', 'cabinet.html'));
+app.get('/cabinet.html',         redirectTo('/cabinet/'));
 app.use('/cabinet',              require('./routes/cabinet'));
 
-// Serve DApp static files — accessible at both / and /dapp/
-const path = require('path');
+// DApp — deliberately served at both / (short root) and /dapp/ (documented
+// dual entry point, README_FULL). Only the incidental raw filenames — never
+// a documented entry point, just static-file leakage — get normalized.
+app.get('/index.html',           redirectTo('/dapp/'));
+app.get('/dapp/index.html',      redirectTo('/dapp/'));
 app.use(express.static(path.join(__dirname, '../public')));
 app.use('/dapp', express.static(path.join(__dirname, '../public')));
 
