@@ -37,11 +37,6 @@
     .status-box .step.active { color: #f5a623; }
     .status-box .step.done   { color: #7ee8a2; }
     .status-box .step.err    { color: #e05555; }
-    .events-list { max-height: 280px; overflow-y: auto; }
-    .event-item { border-bottom: 1px solid #1e1e1e; padding: 10px 0; font-size: 0.75rem; }
-    .event-item:last-child { border-bottom: none; }
-    .event-type { color: #7ee8a2; font-weight: bold; }
-    .event-meta { color: #555; margin-top: 2px; }
     .divider { border: none; border-top: 1px solid #1e1e1e; margin: 16px 0; }
     .note { font-size: 0.7rem; color: #444; margin-top: 8px; }
     a { color: #3a7bfd; text-decoration: none; }
@@ -280,20 +275,6 @@
   <h2>Multi-Source Transfer <span id="mse-card-env" style="color:#444;font-size:0.68rem;font-weight:normal;text-transform:none;letter-spacing:0"></span></h2>
   <div id="mse-steps-list"></div>
   <div id="mse-delivery-msg" style="margin-top:10px;font-size:0.78rem"></div>
-</div>
-
-<!-- 6. MetaRegistry State -->
-<div class="card">
-  <h2>MetaRegistry State</h2>
-  <button class="btn-secondary" onclick="loadState()" style="margin-bottom:14px">Load State</button>
-  <div id="registry-state"></div>
-</div>
-
-<!-- 6. Recent Events -->
-<div class="card">
-  <h2>Recent Events</h2>
-  <button class="btn-secondary" onclick="loadEvents()" style="margin-bottom:14px">Load Events</button>
-  <div class="events-list" id="events-list"></div>
 </div>
 
 <!-- Multi-Operations modals -->
@@ -906,53 +887,6 @@ async function postEntry(payload) {
     body:    JSON.stringify(payload),
   });
   return r.json();
-}
-
-// ── MetaRegistry State ────────────────────────────────────────────────────────
-// This block (and "Recent Events" below it) is operator/debug-facing, not
-// user-facing — planned for removal from the DApp after testing, since it
-// conceptually belongs in admin.html. Numbers here are the registry's OWN
-// ledger (in-memory, synced from chain only at server startup), not a live
-// on-chain read — see docs/state_fields_explained.md for a field-by-field
-// breakdown of what each value means, where it's mutated, and why it can
-// temporarily diverge from real on-chain balances.
-async function loadState() {
-  const el = document.getElementById('registry-state');
-  el.innerHTML = '<span class="value dim">loading…</span>';
-  try {
-    const d = await (await fetch('/state')).json();
-    if (!d.ok) { el.innerHTML = '<span class="value err">Not initialized</span>'; return; }
-    const s = d.state;
-    let html = `<div class="row"><span class="label">Status</span>
-      <span class="badge ${s.status === 'ACTIVE' ? 'ok' : 'err'}">${s.status}</span></div>
-      <div class="row"><span class="label">Events</span><span class="value">${s.event_count}</span></div>`;
-    for (const [nid, net] of Object.entries(s.networks || {})) {
-      html += `<div class="row"><span class="label">Network ${nid}</span>
-        <span class="value">IT_ACTIVE=${net.IT_ACTIVE} IT_FROZEN=${net.IT_FROZEN} wallets=${net.wallet_active_total} UNAVAIL=${net.UNAVAILABLE}</span></div>`;
-    }
-    el.innerHTML = html;
-  } catch (_) {
-    el.innerHTML = '<span class="value err">Error loading state</span>';
-  }
-}
-
-async function loadEvents() {
-  const el = document.getElementById('events-list');
-  el.innerHTML = '<div class="event-item"><span class="value dim">loading…</span></div>';
-  try {
-    const d = await (await fetch('/events?limit=20')).json();
-    if (!d.ok || !d.events.length) { el.innerHTML = '<div class="event-item"><span class="value dim">No events yet</span></div>'; return; }
-    el.innerHTML = [...d.events].reverse().map(e => `
-      <div class="event-item">
-        <span class="event-type">${e.event_type}</span>
-        <div class="event-meta">
-          net=${e.network_id || '—'} · ${(e.from_address || '—').slice(0, 10)}… → ${(e.to_address || '—').slice(0, 10)}…
-          · amt=${e.amount ?? '—'} · ${new Date(e.created_at || 0).toLocaleTimeString()}
-        </div>
-      </div>`).join('');
-  } catch (_) {
-    el.innerHTML = '<div class="value err">Error loading events</div>';
-  }
 }
 
 // ── UI helpers ────────────────────────────────────────────────────────────────
