@@ -382,6 +382,57 @@ const TRANSFER_ABI     = ['function transfer(address to, uint256 amount) returns
 
 let NETWORKS     = {};
 let CHAIN_TO_NET = {};
+
+// Public, key-free RPC endpoints — deliberately NOT the backend's own .env
+// RPC_A..D (those may be paid/rate-limited keys not meant for public exposure).
+// Used only for wallet_addEthereumChain when MetaMask doesn't know the network yet.
+const NETWORK_ADD_PARAMS = {
+  A: {
+    chainId: '0xaa36a7',
+    chainName: 'Ethereum Sepolia',
+    rpcUrls: ['https://ethereum-sepolia-rpc.publicnode.com'],
+    nativeCurrency: { name: 'Sepolia Ether', symbol: 'ETH', decimals: 18 },
+    blockExplorerUrls: ['https://sepolia.etherscan.io'],
+  },
+  B: {
+    chainId: '0x61',
+    chainName: 'BNB Smart Chain Testnet',
+    rpcUrls: ['https://bsc-testnet-rpc.publicnode.com'],
+    nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+    blockExplorerUrls: ['https://testnet.bscscan.com'],
+  },
+  C: {
+    chainId: '0x13882',
+    chainName: 'Polygon PoS Amoy',
+    rpcUrls: ['https://polygon-amoy-bor-rpc.publicnode.com'],
+    nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
+    blockExplorerUrls: ['https://amoy.polygonscan.com'],
+  },
+  D: {
+    chainId: '0x66eee',
+    chainName: 'Arbitrum Sepolia',
+    rpcUrls: ['https://arbitrum-sepolia-rpc.publicnode.com'],
+    nativeCurrency: { name: 'Sepolia Ether', symbol: 'ETH', decimals: 18 },
+    blockExplorerUrls: ['https://sepolia.arbiscan.io'],
+  },
+};
+
+// Adds the network to MetaMask via wallet_addEthereumChain (EIP-3085). On
+// success MetaMask automatically switches to it (no extra switch call
+// needed) — the existing chainChanged listener picks up the change.
+// Stays silent on user rejection (4001), matching the convention already
+// used for wallet_switchEthereumChain below.
+async function ensureNetworkAdded(net_id) {
+  const params = NETWORK_ADD_PARAMS[net_id];
+  if (!params) return { ok: false, rejected: false };
+  try {
+    await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [params] });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, rejected: e.code === 4001 };
+  }
+}
+
 let provider     = null;
 let signer       = null;
 let account      = null;
@@ -547,7 +598,15 @@ async function switchToNetwork() {
   try {
     await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainHex }] });
   } catch (e) {
-    alert('Switch failed: ' + (e.message || e));
+    if (e.code === 4902) {
+      const result = await ensureNetworkAdded(net.network_id);
+      if (!result.ok && !result.rejected) {
+        alert(`Network ${net.network_id} (${net.name}) could not be added automatically. Please add it manually in MetaMask.`);
+      }
+      // On success, MetaMask has already switched — chainChanged handles the rest.
+    } else {
+      alert('Switch failed: ' + (e.message || e));
+    }
   }
 }
 
@@ -1245,7 +1304,10 @@ async function mseSwitchToNet(net_id) {
     // chainChanged fires → re-evaluates step automatically
   } catch (e) {
     if (e.code === 4902) {
-      alert(`Network ${net_id} (${net.name}) is not added in MetaMask. Please add it manually first.`);
+      const result = await ensureNetworkAdded(net_id);
+      if (!result.ok && !result.rejected) {
+        alert(`Network ${net_id} (${net.name}) could not be added automatically. Please add it manually in MetaMask.`);
+      }
     } else if (e.code !== 4001) { // 4001 = user rejected — silent
       alert('Switch failed: ' + (e.message || e));
     }
