@@ -20,7 +20,8 @@
 
     .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
     .page-header .subtitle { margin-bottom: 0; }
-    .btn-back { padding: 9px 18px; font-size: 0.82rem; border-radius: 6px; color: #ccc; background: #2a2a2a; text-decoration: none; display: inline-block; white-space: nowrap; }
+    .header-links { display: flex; flex-direction: column; gap: 8px; }
+    .btn-back { padding: 9px 18px; font-size: 0.82rem; border-radius: 6px; color: #ccc; background: #2a2a2a; text-decoration: none; display: inline-block; white-space: nowrap; text-align: center; }
     .btn-back:hover { opacity: 0.85; }
 
     .card { background: #161616; border: 1px solid #2a2a2a; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
@@ -116,7 +117,10 @@
     <h1>MetaNetwork EQI</h1>
     <p class="subtitle">Live Transparency Dashboard — MetaRegistry MVP</p>
   </div>
-  <a href="/dapp" class="btn-back">Open DApp →</a>
+  <div class="header-links">
+    <a href="/dapp" class="btn-back" target="_blank" rel="noopener">Open DApp →</a>
+    <a href="/cabinet" class="btn-back" target="_blank" rel="noopener">Open Cabinet →</a>
+  </div>
 </div>
 
 <div class="status-row">
@@ -133,9 +137,9 @@
 <!-- Global counters -->
 <div class="section-label">Global State</div>
 <div class="counters" id="counters">
-  <div class="counter-card"><div class="counter-label">Total Minted</div><div class="counter-value" id="c-minted">—</div></div>
   <div class="counter-card"><div class="counter-label">A_ACTIVE (Invariant)</div><div class="counter-value highlight" id="c-active">—</div></div>
   <div class="counter-card"><div class="counter-label">Total Frozen</div><div class="counter-value frozen" id="c-frozen">—</div></div>
+  <div class="counter-card"><div class="counter-label">Total Minted</div><div class="counter-value" id="c-minted">—</div></div>
   <div class="counter-card"><div class="counter-label">UNAVAILABLE</div><div class="counter-value" id="c-unavail">—</div></div>
 </div>
 
