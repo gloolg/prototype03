@@ -61,12 +61,14 @@ prototype03/
     │       ├── adminMse.js        # /admin/multi-envelopes/* (auth-protected)
     │       └── adminNetworks.js   # /admin/networks (auth-protected) — network_config CRUD, NOT yet wired to live state (see gap below)
     └── public/
-        ├── index.html             # EQI DApp (served at / and /dapp)
-        ├── admin.html             # Admin panel (served at /admin)
-        ├── network.html           # Network config admin UI (served at /admin/network)
-        ├── cabinet.html           # Cabinet page (served at /cabinet)
-        └── transparency.html      # Public transparency dashboard
+        ├── index.html             # EQI DApp (served at / and /dapp/)
+        ├── admin.html             # Admin panel (canonical: /admin/)
+        ├── network.html           # Network config admin UI (canonical: /admin/network/)
+        ├── cabinet.html           # Cabinet page (canonical: /cabinet/)
+        └── transparency.html      # Public transparency dashboard (canonical: /transparency/)
 ```
+
+**URL convention:** every page has exactly one canonical URL — the trailing-slash form (`/admin/`, `/admin/network/`, `/cabinet/`, `/transparency/`), matching the original `/dapp/` entry point. Every other spelling (no trailing slash, or the raw `.html` filename — both of which used to work silently and identically, since Express's default non-strict routing treats `/foo` and `/foo/` as the same pattern, and the catch-all static mount serves every file in `public/` at its literal name regardless of the app's routes) now `301`-redirects to the canonical form via `server.js`'s `servePageCanonical()`/`redirectTo()` helpers. The one exception is bare `GET /transparency` for non-browser clients: it stays a direct (unredirected) JSON response, since it's a documented public API contract (`curl $BASE/transparency`, used throughout `demo-script.md`) and curl/fetch don't follow redirects by default — only browser navigation to that bare path gets redirected to `/transparency/`.
 
 ---
 
@@ -144,14 +146,14 @@ The system was originally hardcoded to exactly 4 networks (A/B/C/D). A refactor 
 | POST | `/genesis` | — | Initialize MetaRegistry (one-time). Body: `{networks:[{network_id,it_address}×4]}` |
 | GET | `/state` | — | Full in-memory state: networks, treasuries, wallets, event/snapshot counts |
 | GET | `/events` | — | Append-only event log. Params: `?limit=N&envelope_id=ENV-...` |
-| GET | `/transparency` | — | Public canonical snapshot: invariants, totals, per-network breakdown |
+| GET | `/transparency` | — | Content-negotiated: JSON snapshot (invariants, totals, per-network breakdown) for API clients; browser navigation `301`s to the `/transparency/` dashboard page instead |
 
 ### Token Operations
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| POST | `/treasury/distribute` | — | Move tEQUI from `IT_ACTIVE` to tester wallet. Enforces 60/40 corridor. Triggers Executor delivery. Body: `{network_id, wallet_address, amount}` |
-| POST | `/transfer` | — | **Operator endpoint.** Direct MetaRegistry state update without on-chain verification. Modes: `AUTOMATIC` (priority A→B→C→D) or `USER_DEFINED` (explicit per-network amounts). Not used by DApp. |
+| POST | `/treasury/distribute` | — | Move tEQUI from `IT_ACTIVE` to tester wallet. Enforces 60/40 corridor. Triggers Executor delivery. Body: `{network_id, wallet_address, amount, command_id?}`. **Unauthenticated** — `command_id` is optional and client-suppliable for idempotency; reusing one with different `network_id`/`wallet_address`/`amount` is rejected (`COMMAND_ID_PARAM_MISMATCH`), not silently applied against the cached tx_hash from the original call (see Executor Idempotency below) |
+| POST | `/transfer` | — | **Operator endpoint.** Direct MetaRegistry state update without on-chain verification. Modes: `AUTOMATIC` (priority A→B→C→D) or `USER_DEFINED` (explicit per-network amounts). Not used by DApp. Same-network transfers reject `sender === recipient` (`SELF_TRANSFER_NOT_ALLOWED`) |
 
 ### DApp Entry Flow (peer-initiated, on-chain verified)
 
@@ -388,6 +390,8 @@ explorer_url TEXT | created_at INT | updated_at INT
 
 **Idempotency:** `command_id` is unique per operation (e.g. `entry:<tx_hash>`, `mse:deliver:<envelope_id>`, `mse:refund:<envelope_id>:<network>`, `cabinet:withdraw:<withdraw_id>:<network_id>`). On server restart, all `PENDING` rows in `execution_log` are set to `FAILED` — requires admin review.
 
+A cached `COMPLETED` hit is only returned if the incoming `network_id`/`to_address`/`amount` match the row that was actually executed (address comparison case-insensitive); otherwise `executeCommand` returns `{ok:false, reason:'COMMAND_ID_PARAM_MISMATCH'}`. Every other caller derives `command_id` from server-controlled or on-chain-verified data, so this only matters in practice for `POST /treasury/distribute` — the one endpoint that accepts a client-supplied `command_id` directly, on an unauthenticated route. Without this check, reusing an old `command_id` with a different `network_id`/`wallet_address`/`amount` would return the *original* call's `tx_hash` as "proof" while crediting the *new* request's amount to the *new* recipient — a ledger credit with no matching on-chain transfer.
+
 **Pre-flight:** `canApplyTreasuryDistribution` validates invariants before spending gas on a distribution that would be rejected.
 
 **Signing:** `getSigner()` builds an `ethers.Wallet` from a `.env` private key per network (`executor/networks.js`). GCP KMS migration is a drop-in replacement for this one function; not yet done.
@@ -425,7 +429,7 @@ create()
 
 A separate accounting layer on top of the MetaRegistry, for end users who hold `access_token` credentials instead of a wallet. Admin-created and admin-funded; the cabinet itself never touches on-chain state until a withdrawal is initiated.
 
-- **Creation** (`POST /admin/cabinets/create`): admin picks `initial_amount` (must be divisible by 4); the amount is reserved in equal quarters (`reserved_A..D`) against **free** `IT_ACTIVE` on each network (`IT_ACTIVE − SUM(reserved_X across all cabinets)`). Fails if any network lacks enough free `IT_ACTIVE`; rolls back on a post-create invariant violation.
+- **Creation** (`POST /admin/cabinets/create`): admin picks `initial_amount` (must be divisible by 4); the amount is reserved in equal quarters (`reserved_A..D`) against **free** `IT_ACTIVE` on each of the network's **hardcoded** `CABINET_NETS = ['A','B','C','D']` (deliberately not the dynamic network list — the `cabinets` table has no columns beyond `reserved_D`, so a 5th live network is simply not considered here rather than silently mis-checked). Free = `IT_ACTIVE − SUM(reserved_X across all cabinets)`. Fails if any of the 4 networks lacks enough free `IT_ACTIVE`; rolls back on a post-create invariant violation.
 - **Auth**: `POST /cabinet/auth` exchanges the pre-issued `access_token` for an 8-hour Bearer session token (`cabinet_sessions`), same pattern as admin sessions.
 - **Balance**: `GET /cabinet/balance` returns `total_balance` and the per-network `reserved_*` breakdown — this is a ledger entry, not a live on-chain balance (the tokens are still sitting in the IT-EOAs until withdrawn).
 - **Withdrawal** (`cabinet/withdraw.js`, `processWithdraw()`): builds a deduction plan — target network first, then A→B→C→D minus target (`NETWORK_ORDER`, hardcoded) — taking from `reserved_*` until `amount` is covered. Persists `cabinet_withdrawals` + one `cabinet_withdrawal_steps` row per network touched, then executes each step **sequentially** via `executeCommand(CABINET_WITHDRAW)`. Stops on first failure (`PARTIAL_FAILED`) — later steps are not attempted, leaving partial delivery + a reduced-but-still-correct reserved balance (already-completed steps decremented `reserved_*`/`total_balance`).
@@ -456,6 +460,8 @@ A separate accounting layer on top of the MetaRegistry, for end users who hold `
 - Admin password: bcrypt hash (via `bcryptjs`, not the native `bcrypt` package) stored in `admin_config`. 8-hour sessions (also used unchanged for Cabinet sessions and the `/admin/networks` panel).
 - CORS: open `*` for testnet MVP. Tighten for production.
 - No user input reaches `exec` or dynamic SQL — all queries use prepared statements with `?` parameters. `adminNetworks.js` validates `network_id` against `^[A-Za-z0-9-]{1,10}$` before use, and EVM fields (`it_eoa_address`, `it_eoa_private_key`, `contract_address`, `chain_id`) against format-specific regexes/`parseInt`.
+- `POST /treasury/distribute` is unauthenticated (see API Reference) and accepts a client-supplied `command_id`; `executeCommand` rejects reuse of a `command_id` with different `network_id`/`to_address`/`amount` rather than applying a mismatched request against the original cached `tx_hash` (see Executor above).
+- Same-network self-transfer (`sender === recipient`) is rejected at every layer that can reach it: `/entry`, `/entry/multi/create` (route-level `SELF_TRANSFER_NOT_ALLOWED`), and `simulator/crossNetwork.js`'s `applySameNetworkThroughMetaRegistry` itself (covers `/transfer` and any other caller) — without the latter, `sender`/`recipient` resolve to the same wallet object and the balance change silently cancels out while still logging a full `OPERATION_COMPLETED` event.
 
 ---
 
