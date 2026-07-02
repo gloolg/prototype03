@@ -378,9 +378,16 @@ router.post('/cabinets/create', (req, res) => {
     });
   }
 
-  const quota      = amt / 4;
-  const state      = sm.getState();
-  const VALID_NETS = getValidNetworkIds();
+  const quota = amt / 4;
+  const state = sm.getState();
+  // Deliberately hardcoded, NOT getValidNetworkIds(): the cabinets table only
+  // has reserved_A..reserved_D columns (schema-level 4-network limit, see
+  // README_FULL "Dynamic Network Support"). Using the dynamic network list
+  // here would silently miscompute for a 5th network — afterRow[`t${n}`]
+  // would be undefined for anything beyond D, and `undefined > itActive` is
+  // always false in JS, so the invariant check below would never catch a
+  // real violation on that network instead of correctly refusing to support it.
+  const CABINET_NETS = ['A', 'B', 'C', 'D'];
 
   const totRow = db.prepare(`
     SELECT COALESCE(SUM(reserved_A),0) AS tA,
@@ -393,7 +400,7 @@ router.post('/cabinets/create', (req, res) => {
   const reservedNow = { A: totRow.tA, B: totRow.tB, C: totRow.tC, D: totRow.tD };
 
   const insufficient = [];
-  for (const n of VALID_NETS) {
+  for (const n of CABINET_NETS) {
     const itActive = (state.networks[n] || {}).IT_ACTIVE || 0;
     const free = itActive - reservedNow[n];
     if (free < quota) insufficient.push({ network: n, free, required: quota });
@@ -423,7 +430,7 @@ router.post('/cabinets/create', (req, res) => {
            COALESCE(SUM(reserved_D),0) AS tD
     FROM cabinets
   `).get();
-  for (const n of VALID_NETS) {
+  for (const n of CABINET_NETS) {
     const itActive = (state.networks[n] || {}).IT_ACTIVE || 0;
     const newReserved = afterRow[`t${n}`];
     if (newReserved > itActive) {
