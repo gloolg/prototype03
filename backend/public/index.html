@@ -909,6 +909,13 @@ async function postEntry(payload) {
 }
 
 // ── MetaRegistry State ────────────────────────────────────────────────────────
+// This block (and "Recent Events" below it) is operator/debug-facing, not
+// user-facing — planned for removal from the DApp after testing, since it
+// conceptually belongs in admin.html. Numbers here are the registry's OWN
+// ledger (in-memory, synced from chain only at server startup), not a live
+// on-chain read — see docs/state_fields_explained.md for a field-by-field
+// breakdown of what each value means, where it's mutated, and why it can
+// temporarily diverge from real on-chain balances.
 async function loadState() {
   const el = document.getElementById('registry-state');
   el.innerHTML = '<span class="value dim">loading…</span>';
