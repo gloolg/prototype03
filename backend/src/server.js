@@ -85,20 +85,29 @@ app.use('/transfer',             require('./routes/transfer'));
 app.use('/state',                require('./routes/state'));
 app.use('/events',               require('./routes/events'));
 
-// GET /transparency (no trailing slash) stays dual-purpose and UNREDIRECTED:
-// it's a documented public JSON API (curl $BASE/transparency, used throughout
-// demo-script.md) as well as the dashboard for plain browser navigation
-// (Accept: text/html). Redirecting it would break API callers that don't
-// follow redirects. /transparency/ below is the dedicated, always-HTML
-// canonical dashboard URL matching the site-wide trailing-slash convention.
+// Non-strict routing means the pattern '/transparency' matches BOTH
+// '/transparency' and '/transparency/' — a separately-registered
+// app.get('/transparency/', ...) below this would never be reached, since
+// this handler runs first for either spelling and either serves the file
+// or falls through. So both spellings are handled in ONE place, branching
+// on the literal req.path:
+//   /transparency/ (trailing slash) -> always the HTML dashboard, no
+//     content negotiation — this is the one canonical URL for it.
+//   /transparency (bare) -> negotiates: browsers (Accept: text/html) 301
+//     to /transparency/; JSON API callers (curl/fetch, demo-script.md,
+//     default Accept: */*) fall through unredirected to the JSON route
+//     below — that documented API response must keep coming back inline,
+//     since curl/fetch don't follow redirects by default.
 app.get('/transparency', (req, res, next) => {
-  if (req.accepts(['json', 'html']) === 'html') {
+  if (req.path === '/transparency/') {
     return res.sendFile(path.join(__dirname, '../public/transparency.html'));
+  }
+  if (req.accepts(['json', 'html']) === 'html') {
+    return res.redirect(301, '/transparency/');
   }
   next();
 });
 app.use('/transparency',         require('./routes/transparency'));
-app.get('/transparency/',        servePageCanonical('/transparency/', 'transparency.html'));
 app.get('/transparency.html',    redirectTo('/transparency/'));
 
 app.use('/registry',             require('./routes/registry'));
