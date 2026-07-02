@@ -55,6 +55,27 @@ async function executeCommand(command) {
 
   if (existing) {
     if (existing.status === 'COMPLETED') {
+      // Defense-in-depth: a cached hit MUST match the current request's
+      // params. Without this check, a command_id reused for a logically
+      // different operation (different network/recipient/amount) would
+      // return the ORIGINAL tx_hash as "proof", and the caller (e.g.
+      // routes/treasury.js) would then credit its ledger using the NEW
+      // request's amount/recipient — crediting balance with zero matching
+      // on-chain movement. This is only reachable via a client-supplied
+      // command_id (currently just POST /treasury/distribute); every other
+      // caller derives command_id from server-controlled/on-chain-verified
+      // data, but the guard applies uniformly since it's cheap and correct
+      // for all of them.
+      const addrMatches = (existing.to_address || '').toLowerCase() === (to_address || '').toLowerCase();
+      if (existing.network_id !== network_id || !addrMatches || existing.amount !== amount) {
+        return {
+          ok:     false,
+          command_id,
+          reason: 'COMMAND_ID_PARAM_MISMATCH',
+          detail: `command_id was already used for a different operation ` +
+            `(network=${existing.network_id}, to=${existing.to_address}, amount=${existing.amount})`,
+        };
+      }
       // Already executed — return cached result, no new tx
       return {
         ok:           true,
