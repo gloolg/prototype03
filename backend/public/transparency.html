@@ -169,16 +169,19 @@
   'use strict';
 
   // ── CONFIG ─────────────────────────────────────────────────────────────────
-  // Replace with the public URL of your deployed backend.
-  // Local dev: 'http://localhost:3000'
-  const API_URL = 'REPLACE_WITH_BACKEND_URL';
+  // Defaults to the origin this page was loaded from — correct whenever the
+  // backend serves this file itself (GET /transparency, the normal case).
+  // Only set an override below if this HTML is hosted separately from the
+  // backend (e.g. a static CDN pointing at a Cloud Run API on another domain).
+  const API_URL_OVERRIDE = '';
+  const API_URL = API_URL_OVERRIDE || window.location.origin;
 
   const REFRESH_INTERVAL_MS = 30_000; // 30 seconds
 
   let NET_NAMES = {};
 
   async function loadConfig() {
-    if (!API_URL || API_URL === 'REPLACE_WITH_BACKEND_URL') return;
+    if (!API_URL) return;
     try {
       const r = await fetch(`${API_URL}/registry/config`, { cache: 'no-store', headers: { 'Accept': 'application/json' } });
       const d = await r.json();
@@ -334,9 +337,9 @@
     info.textContent = 'Refreshing…';
 
     try {
-      if (!API_URL || API_URL === 'REPLACE_WITH_BACKEND_URL') {
+      if (!API_URL) {
         errBox.style.display = '';
-        errBox.textContent   = 'API_URL not configured. Edit the script and set the backend URL.';
+        errBox.textContent   = 'API_URL not configured. Set API_URL_OVERRIDE in the script.';
         return;
       }
 
