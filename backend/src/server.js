@@ -66,16 +66,21 @@ app.use('/transparency',         require('./routes/transparency'));
 app.use('/registry',             require('./routes/registry'));
 app.use('/entry',                require('./routes/entry'));
 app.use('/entry/multi',          require('./routes/multiEntry'));
-// Serve admin panel HTML at GET /admin (before API router)
+// Serve admin panel HTML pages BEFORE the /admin API routers below.
+// Express tries middleware/routes in registration order: app.use('/admin', adminRouter)
+// applies requireAdmin to every /admin/* sub-path that doesn't match one of its own
+// routes first (router.use(requireAdmin) has no path filter, so it catches everything
+// that falls through). If these two page routes were registered AFTER the routers,
+// GET /admin/network would hit admin.js's requireAdmin and 401 before ever reaching
+// this handler — the page would never be served at all. Keep both page routes here.
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/admin.html'));
 });
-app.use('/admin',                require('./routes/admin'));
-app.use('/admin',                require('./routes/adminMse'));
-// Network config management page (admin-only, Bearer-protected)
 app.get('/admin/network', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/network.html'));
 });
+app.use('/admin',                require('./routes/admin'));
+app.use('/admin',                require('./routes/adminMse'));
 app.use('/admin',                require('./routes/adminNetworks'));
 
 // Cabinet — user-facing balance page (no MetaMask, access_token auth)
