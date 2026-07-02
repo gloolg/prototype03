@@ -413,7 +413,15 @@ window.addEventListener('load', async () => {
           if (idx >= 0) runMseStep(idx);
         });
       } else {
-        location.reload();
+        // Re-sync in place instead of reloading the page. A reload resets
+        // provider/signer/account with no auto-reconnect, so it silently
+        // dropped the user back to the disconnected "Connect MetaMask"
+        // screen on every network switch — including the one triggered by
+        // our own "Switch Network" button, right after they picked a
+        // network. updateWalletUI() no-ops safely if not yet connected
+        // (checked internally), same re-sync pattern already used above
+        // for the MSE case.
+        updateWalletUI();
       }
     });
   }
